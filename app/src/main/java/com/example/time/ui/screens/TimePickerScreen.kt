@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import kotlin.math.abs
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.offset
 
 @Composable
 fun TimePickerScreen(onStartClick: (Long) -> Unit) {
@@ -38,7 +40,8 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                 .height(200.dp)
                 .padding(horizontal = 32.dp),
             shape = MaterialTheme.shapes.large,
-            tonalElevation = 8.dp
+            tonalElevation = 0.dp,
+            color = Color.White
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -52,7 +55,10 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                     suffix = "时"
                 )
                 
-                Text(":", fontSize = 20.sp)
+                Text(":", 
+                    fontSize = 20.sp,
+                    modifier = Modifier.offset(y = 39.dp)
+                )
                 
                 // 分钟选择器
                 NumberPicker(
@@ -61,7 +67,10 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                     suffix = "分"
                 )
                 
-                Text(":", fontSize = 20.sp)
+                Text(":", 
+                    fontSize = 20.sp,
+                    modifier = Modifier.offset(y = 39.dp)
+                )
                 
                 // 秒选择器
                 NumberPicker(
@@ -123,6 +132,9 @@ private fun NumberPicker(
     )
     val flingBehavior = rememberSnapFlingBehavior(listState)
     
+    // 设置滚动停止位置为整数倍的项高度
+    val itemHeight = 40.dp
+    
     // 添加额外的项使选择器可以滚动到列表开头和结尾
     val extraItems = 1
     val totalItems = range.last - range.first + 1 + (extraItems * 2)
@@ -164,38 +176,28 @@ private fun NumberPicker(
             .width(60.dp),
         contentAlignment = Alignment.Center
     ) {
-        // 先添加选中项指示器，确保它们在列表后面
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-            shape = MaterialTheme.shapes.small
-        ) { }
+        // 这里的布局顺序很重要 - 先绘制背景
         
-        // 上方分隔线
-        Divider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = (-20).dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
-        
-        // 下方分隔线
-        Divider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        )
+        // 绘制只保留选中区域背景
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 选中区域背景 - 放在中间（修改背景为透明，让背景色直接显示）
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .align(Alignment.Center),
+                color = Color.Transparent,  // 改为透明色，这样会显示父级背景
+                shape = MaterialTheme.shapes.small
+            ) { }
+        }
 
+        // 然后绘制LazyColumn内容
         LazyColumn(
             state = listState,
             flingBehavior = flingBehavior,
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxHeight(),
+            // 关键是调整内边距让中间项对齐到中央
             contentPadding = PaddingValues(vertical = 40.dp)
         ) {
             items(totalItems) { index ->
@@ -215,7 +217,7 @@ private fun NumberPicker(
                 // 固定高度确保对齐
                 Box(
                     modifier = Modifier
-                        .height(40.dp)
+                        .height(itemHeight)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
@@ -225,10 +227,11 @@ private fun NumberPicker(
                             text = "${value.toString().padStart(2, '0')}$suffix",
                             fontSize = 20.sp,
                             fontWeight = if (index == centerItemIndex.value) FontWeight.Bold else FontWeight.Normal,
-                            // 根据是否为中间选定项调整透明度
-                            color = MaterialTheme.colorScheme.onSurface.copy(
-                                alpha = if (index == centerItemIndex.value) 1f else 0.6f
-                            )
+                            // 根据是否为中间选定项调整颜色和透明度
+                            color = if (index == centerItemIndex.value) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     } else {
                         // 对于额外项，不显示任何内容
