@@ -44,7 +44,9 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
             color = Color.White
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = (-45).dp),  // 向上偏移15dp
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -52,7 +54,7 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                 NumberPicker(
                     range = 0..23,
                     onValueChange = { selectedHours = it },
-                    suffix = "时"
+                    suffix = ""
                 )
                 
                 Text(":", 
@@ -64,7 +66,7 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                 NumberPicker(
                     range = 0..59,
                     onValueChange = { selectedMinutes = it },
-                    suffix = "分"
+                    suffix = ""
                 )
                 
                 Text(":", 
@@ -76,7 +78,7 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                 NumberPicker(
                     range = 0..59,
                     onValueChange = { selectedSeconds = it },
-                    suffix = "秒"
+                    suffix = ""
                 )
             }
         }
@@ -225,11 +227,11 @@ private fun NumberPicker(
                     if (!isExtraItem) {
                         Text(
                             text = "${value.toString().padStart(2, '0')}$suffix",
-                            fontSize = 20.sp,
+                            fontSize = 42.sp,
                             fontWeight = if (index == centerItemIndex.value) FontWeight.Bold else FontWeight.Normal,
-                            // 根据是否为中间选定项调整颜色和透明度
+                            // 修改选中项的颜色为黑色，而不是使用主题色
                             color = if (index == centerItemIndex.value) 
-                                MaterialTheme.colorScheme.primary 
+                                Color.Black  // 改为黑色
                             else 
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
