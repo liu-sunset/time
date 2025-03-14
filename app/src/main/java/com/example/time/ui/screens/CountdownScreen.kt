@@ -39,7 +39,7 @@ fun CountdownScreen(totalSeconds: Long, onFinish: () -> Unit) {
         
         Text(
             text = timeText,
-            fontSize = if (hours > 0) 100.sp else 120.sp,
+            fontSize = if (hours > 0) 180.sp else 160.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
