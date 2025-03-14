@@ -34,6 +34,10 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun TimePickerScreen(onStartClick: (Long) -> Unit) {
@@ -173,16 +177,26 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
                                              selectedSeconds
                             
                                 if (totalSeconds > 0) {
-                                    onStartClick(totalSeconds)
+                                    // 添加短暂延迟使滑块动画完成后再切换页面
+                                    isDragging = false
+                                    offsetX = 0f
+                                    
+                                    // 使用普通协程代替LaunchedEffect
+                                    CoroutineScope(Dispatchers.Main).launch {
+                                        delay(100)  // 短暂延迟
+                                        onStartClick(totalSeconds)
+                                    }
                                 } else {
                                     // 显示提示
                                     showToast = true
+                                    isDragging = false
+                                    offsetX = 0f
                                 }
+                            } else {
+                                // 重置状态，使滑块自动返回起始位置
+                                isDragging = false
+                                offsetX = 0f
                             }
-                            
-                            // 重置状态，使滑块自动返回起始位置
-                            isDragging = false
-                            offsetX = 0f
                         }
                     ),
                 contentAlignment = Alignment.Center
