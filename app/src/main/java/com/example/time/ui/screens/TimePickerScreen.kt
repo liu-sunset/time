@@ -15,6 +15,25 @@ import androidx.compose.foundation.lazy.items
 import kotlin.math.abs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun TimePickerScreen(onStartClick: (Long) -> Unit) {
@@ -83,28 +102,93 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
             }
         }
 
-        Button(
-            onClick = {
-                val totalSeconds = (selectedHours * 3600L) + 
-                                 (selectedMinutes * 60L) + 
-                                 selectedSeconds
-                if (totalSeconds > 0) {
-                    onStartClick(totalSeconds)
-                } else {
-                    // 显示提示
-                    showToast = true
-                }
-            },
-            modifier = Modifier.padding(top = 32.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+        // 替换原来的Button
+        Box(
+            modifier = Modifier
+                .padding(top = 32.dp)
+                .fillMaxWidth()
+                .height(60.dp)
+                .padding(horizontal = 32.dp)
         ) {
-            Text(
-                "开始倒计时",
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
-                fontSize = 18.sp
+            // 使用本地密度转换器
+            val density = LocalDensity.current
+            // 跟踪滑动位置
+            var offsetX by remember { mutableFloatStateOf(0f) }
+            // 是否正在拖动
+            var isDragging by remember { mutableStateOf(false) }
+            // 计算最大滑动距离
+            val maxSlideWidth = with(density) { 200.dp.toPx() }
+            
+            // 修改动画逻辑，只在非拖动状态时才应用动画
+            val animatedOffset by animateFloatAsState(
+                // 拖动时直接使用实时偏移量，不使用动画值
+                targetValue = if (!isDragging) 0f else offsetX,
+                animationSpec = tween(300),
+                label = "slideAnimation"
             )
+            
+            // 最终使用的偏移值 - 拖动时直接使用offsetX，松开时使用动画值
+            val finalOffset = if (isDragging) offsetX else animatedOffset
+            
+            // 创建黑色渐变背景
+            val gradientBackground = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Black,
+                    Color(0xFF333333),
+                    Color(0xFF555555)
+                )
+            )
+            
+            // 滑动轨道背景
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(Color(0xFFEEEEEE))
+                    .align(Alignment.Center)
+            )
+            
+            // 滑块
+            Box(
+                modifier = Modifier
+                    .width(with(density) { (60.dp + finalOffset.toDp()) })
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(gradientBackground)
+                    .shadow(4.dp, RoundedCornerShape(30.dp))
+                    .align(Alignment.CenterStart)
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state = rememberDraggableState { delta ->
+                            // 更新偏移量
+                            offsetX = (offsetX + delta).coerceIn(0f, maxSlideWidth)
+                        },
+                        onDragStarted = { isDragging = true },
+                        onDragStopped = {
+                            // 如果滑动到最右端，触发操作
+                            if (offsetX >= maxSlideWidth * 0.9f) {
+                                val totalSeconds = (selectedHours * 3600L) + 
+                                             (selectedMinutes * 60L) + 
+                                             selectedSeconds
+                            
+                                if (totalSeconds > 0) {
+                                    onStartClick(totalSeconds)
+                                } else {
+                                    // 显示提示
+                                    showToast = true
+                                }
+                            }
+                            
+                            // 重置状态，使滑块自动返回起始位置
+                            isDragging = false
+                            offsetX = 0f
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // 保持滑块简洁
+            }
         }
     }
 
