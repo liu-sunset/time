@@ -61,6 +61,8 @@ fun TimePickerScreen(
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("时间最小为0") }
     
+    var isToolEnabled by rememberSaveable { mutableStateOf(false) }
+    
     val configuration = LocalConfiguration.current
     val isLandscape = remember(configuration) { 
         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE 
@@ -84,6 +86,41 @@ fun TimePickerScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        spotColor = Color.Black.copy(alpha = 0.25f)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFFE0E0E0),
+                onClick = {
+                    isToolEnabled = !isToolEnabled
+                    toastMessage = if (isToolEnabled) "工具已开启" else "工具已关闭"
+                    showToast = true
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (isToolEnabled) "工具开" else "工具关",
+                        fontSize = 14.sp,
+                        color = Color.Black.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+        
         if (!isLandscape) {
             Column(
                 modifier = Modifier.fillMaxSize(),

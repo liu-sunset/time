@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.LaunchedEffect
 import com.example.time.ui.screens.CountdownScreen
 import com.example.time.ui.screens.TimePickerScreen
 import com.example.time.ui.theme.TimeTheme
@@ -31,6 +35,11 @@ class MainActivity : ComponentActivity() {
         
         // 优化1: 启用边缘到边缘显示，提前完成窗口设置
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        // 隐藏系统栏
+        val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
         
         // 优化2: 预先获取系统服务
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
