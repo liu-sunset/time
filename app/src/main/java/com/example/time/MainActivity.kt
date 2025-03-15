@@ -23,6 +23,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var vibrator: Vibrator
+
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +33,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         // 优化2: 预先获取系统服务
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         
         // 优化3: 避免在主线程进行不必要的初始化工作
         @OptIn(DelicateCoroutinesApi::class)
@@ -80,29 +82,38 @@ class MainActivity : ComponentActivity() {
                                 CountdownScreen(
                                     totalSeconds = totalSeconds,
                                     onFinish = {
-                                        if (isVibrationEnabled) {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                                vibrator.vibrate(VibrationEffect.createWaveform(
-                                                    longArrayOf(0, 500, 500, 500),
-                                                    -1
-                                                ))
-                                            } else {
-                                                @Suppress("DEPRECATION")
-                                                vibrator.vibrate(longArrayOf(0, 500, 500, 500), -1)
-                                            }
-                                        }
+                                        // 倒计时结束后的逻辑
                                     },
-                                    onBack = { isCountdownStarted = false },
+                                    onBack = {
+                                        isCountdownStarted = false
+                                        // 返回时停止震动
+                                        stopVibration(vibrator)
+                                    },
                                     isVibrationEnabled = isVibrationEnabled,
                                     onVibrationToggle = { enabled ->
                                         isVibrationEnabled = enabled
-                                    }
+                                        if (!enabled) {
+                                            // 关闭震动时停止震动
+                                            stopVibration(vibrator)
+                                        }
+                                    },
+                                    vibrator = vibrator // 传递vibrator实例
                                 )
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    // 停止震动的辅助函数
+    private fun stopVibration(vibrator: Vibrator) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.cancel()
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.cancel()
         }
     }
 }

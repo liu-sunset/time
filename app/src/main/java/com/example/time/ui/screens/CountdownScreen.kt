@@ -1,67 +1,43 @@
 package com.example.time.ui.screens
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlin.math.abs
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.*
 import android.os.Build
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.systemBars
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.view.View
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.runtime.LaunchedEffect
-import android.view.View
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.Offset
+import com.example.time.R
+import kotlinx.coroutines.*
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.stringResource
-import com.example.time.R
-import androidx.compose.foundation.Image
 
 @Composable
 fun CountdownScreen(
@@ -69,7 +45,8 @@ fun CountdownScreen(
     onFinish: () -> Unit, 
     onBack: () -> Unit,
     isVibrationEnabled: Boolean,
-    onVibrationToggle: (Boolean) -> Unit
+    onVibrationToggle: (Boolean) -> Unit,
+    vibrator: Vibrator
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
@@ -281,6 +258,39 @@ fun CountdownScreen(
                 }
             }
         )
+    }
+
+    // 修复震动相关的DisposableEffect
+    DisposableEffect(isCountdownFinished, isVibrationEnabled) {
+        var job: Job? = null
+        
+        // 当倒计时结束且震动开启时
+        if (isCountdownFinished && isVibrationEnabled) {
+            // 创建协程作用域
+            val coroutineScope = CoroutineScope(Dispatchers.Main)
+            
+            job = coroutineScope.launch {
+                while (true) { // 使用true替代isActive，因为我们在使用job来控制
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(
+                            VibrationEffect.createWaveform(
+                                longArrayOf(0, 400, 600),
+                                0 // 从索引0开始重复
+                            )
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(longArrayOf(0, 400, 600), 0)
+                    }
+                    delay(2000) // 在协程内调用delay
+                }
+            }
+        }
+        
+        onDispose {
+            job?.cancel()
+            vibrator.cancel()
+        }
     }
 }
 
