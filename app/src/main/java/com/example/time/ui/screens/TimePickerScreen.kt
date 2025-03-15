@@ -469,14 +469,6 @@ private fun SlideToStartButton(
         
         val finalOffset = animatedOffset
         
-        val gradientBackground = Brush.horizontalGradient(
-            colors = listOf(
-                Color.Black,
-                Color(0xFF333333),
-                Color(0xFF555555)
-            )
-        )
-        
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -494,7 +486,7 @@ private fun SlideToStartButton(
                 .width(with(density) { (60.dp + finalOffset.toDp()) })
                 .height(60.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(gradientBackground)
+                .background(Color.Black)
                 .shadow(4.dp, RoundedCornerShape(30.dp))
                 .align(Alignment.CenterStart)
                 .draggable(
