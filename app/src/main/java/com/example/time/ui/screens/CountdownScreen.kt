@@ -41,6 +41,27 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.LaunchedEffect
 import android.view.View
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
+import kotlin.math.cos
+import kotlin.math.sin
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.stringResource
+import com.example.time.R
+import androidx.compose.foundation.Image
 
 @Composable
 fun CountdownScreen(
@@ -53,6 +74,9 @@ fun CountdownScreen(
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
+    
+    // 添加动画状态
+    var isCountdownFinished by remember { mutableStateOf(false) }
     
     LaunchedEffect(key1 = Unit) {
         // 修改为使用 from 方法获取 WindowInsetsControllerCompat 实例
@@ -70,6 +94,7 @@ fun CountdownScreen(
             prevRemainingSeconds = remainingSeconds
             remainingSeconds--
         } else {
+            isCountdownFinished = true  // 设置为已完成状态
             onFinish()
         }
     }
@@ -173,23 +198,44 @@ fun CountdownScreen(
             }
         }
 
-        // 原有的倒计时显示内容
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(16.dp)
-        ) {
-            // 使用计算好的值
-            val (hours, minutes, seconds, prevHours, prevMinutes, prevSeconds, hasHours, digitSize, cardWidth, cardHeight) = timeValues
-            
-            // 翻页时钟组件
-            if (hasHours) {
-                // 显示小时
+        // 根据倒计时状态显示不同内容
+        if (!isCountdownFinished) {
+            // 原有的倒计时显示内容
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+            ) {
+                // 使用计算好的值
+                val (hours, minutes, seconds, prevHours, prevMinutes, prevSeconds, hasHours, digitSize, cardWidth, cardHeight) = timeValues
+                
+                // 翻页时钟组件
+                if (hasHours) {
+                    // 显示小时
+                    FlipTimeUnit(
+                        value = hours,
+                        prevValue = prevHours,
+                        digitSize = digitSize,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight
+                    )
+                    
+                    // 分隔符
+                    Text(
+                        text = ":",
+                        color = Color.Black,
+                        fontSize = if (hasHours) 60.sp else 80.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+                
+                // 显示分钟
                 FlipTimeUnit(
-                    value = hours,
-                    prevValue = prevHours,
+                    value = minutes,
+                    prevValue = prevMinutes,
                     digitSize = digitSize,
                     cardWidth = cardWidth,
                     cardHeight = cardHeight
@@ -203,33 +249,22 @@ fun CountdownScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
+                
+                // 显示秒钟
+                FlipTimeUnit(
+                    value = seconds,
+                    prevValue = prevSeconds,
+                    digitSize = digitSize,
+                    cardWidth = cardWidth,
+                    cardHeight = cardHeight
+                )
             }
-            
-            // 显示分钟
-            FlipTimeUnit(
-                value = minutes,
-                prevValue = prevMinutes,
-                digitSize = digitSize,
-                cardWidth = cardWidth,
-                cardHeight = cardHeight
-            )
-            
-            // 分隔符
-            Text(
-                text = ":",
-                color = Color.Black,
-                fontSize = if (hasHours) 60.sp else 80.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-            
-            // 显示秒钟
-            FlipTimeUnit(
-                value = seconds,
-                prevValue = prevSeconds,
-                digitSize = digitSize,
-                cardWidth = cardWidth,
-                cardHeight = cardHeight
+        } else {
+            // 倒计时结束，显示闹钟动画
+            AlarmClockAnimation(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(200.dp)
             )
         }
     }
@@ -452,6 +487,37 @@ fun Divider(color: Color, thickness: androidx.compose.ui.unit.Dp, modifier: Modi
             .fillMaxWidth()
             .height(thickness)
             .background(color)
+    )
+}
+
+@Composable
+fun AlarmClockAnimation(
+    modifier: Modifier = Modifier
+) {
+    // 创建无限重复的动画
+    val infiniteTransition = rememberInfiniteTransition(label = "alarmAnimation")
+    
+    // 闹钟摇动动画 - 增加幅度从5度到12度
+    val clockRotation by infiniteTransition.animateFloat(
+        initialValue = -12f,
+        targetValue = 12f, 
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "clockRotation"
+    )
+    
+    // 使用图像资源
+    Image(
+        painter = painterResource(id = R.drawable.alarm_clock),
+        contentDescription = "闹钟",
+        modifier = modifier
+            .size(200.dp)
+            .graphicsLayer {
+                rotationZ = clockRotation
+            },
+        colorFilter = ColorFilter.tint(Color.Gray)
     )
 }
 
