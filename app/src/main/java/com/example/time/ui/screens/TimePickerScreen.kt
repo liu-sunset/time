@@ -51,13 +51,6 @@ fun TimePickerScreen(onStartClick: (Long) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "设置倒计时",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-        
         Surface(
             modifier = Modifier
                 .height(200.dp)

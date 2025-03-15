@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
                     } else {
                         CountdownScreen(
                             totalSeconds = totalSeconds,
-                            onFinish = { isCountdownStarted = false }
+                            onFinish = { /* 移除自动返回的行为 */ },
+                            onBack = { isCountdownStarted = false }
                         )
                     }
                 }
