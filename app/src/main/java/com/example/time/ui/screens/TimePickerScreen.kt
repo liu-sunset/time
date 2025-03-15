@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -38,179 +39,349 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 
 @Composable
-fun TimePickerScreen(onStartClick: (Long) -> Unit) {
+fun TimePickerScreen(
+    onStartClick: (Long) -> Unit
+) {
     var selectedHours by remember { mutableStateOf(0) }
     var selectedMinutes by remember { mutableStateOf(0) }
     var selectedSeconds by remember { mutableStateOf(0) }
     var showToast by remember { mutableStateOf(false) }
+    var toastMessage by remember { mutableStateOf("时间最小为0") }
+    
+    // 获取当前屏幕方向
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            modifier = Modifier
-                .height(200.dp)
-                .padding(horizontal = 32.dp),
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = 0.dp,
-            color = Color.White
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-45).dp),  // 向上偏移15dp
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 根据屏幕方向选择不同的布局
+        if (!isLandscape) {
+            // 竖屏布局
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                // 小时选择器
-                NumberPicker(
-                    range = 0..23,
-                    onValueChange = { selectedHours = it },
-                    suffix = ""
+                PortraitTimePicker(
+                    selectedHours, selectedMinutes, selectedSeconds,
+                    onHoursChange = { selectedHours = it },
+                    onMinutesChange = { selectedMinutes = it },
+                    onSecondsChange = { selectedSeconds = it }
                 )
                 
-                Text(":", 
-                    fontSize = 20.sp,
-                    modifier = Modifier.offset(y = 39.dp)
-                )
-                
-                // 分钟选择器
-                NumberPicker(
-                    range = 0..59,
-                    onValueChange = { selectedMinutes = it },
-                    suffix = ""
-                )
-                
-                Text(":", 
-                    fontSize = 20.sp,
-                    modifier = Modifier.offset(y = 39.dp)
-                )
-                
-                // 秒选择器
-                NumberPicker(
-                    range = 0..59,
-                    onValueChange = { selectedSeconds = it },
-                    suffix = ""
+                // 滑动按钮
+                SlideToStartButton(
+                    modifier = Modifier
+                        .padding(top = 32.dp)
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .padding(horizontal = 32.dp),
+                    selectedHours = selectedHours,
+                    selectedMinutes = selectedMinutes,
+                    selectedSeconds = selectedSeconds,
+                    onStartClick = onStartClick,
+                    onShowToast = { showToast = true }
                 )
             }
-        }
-
-        // 替换原来的Button
-        Box(
-            modifier = Modifier
-                .padding(top = 32.dp)
-                .fillMaxWidth()
-                .height(60.dp)
-                .padding(horizontal = 32.dp)
-        ) {
-            // 使用本地密度转换器
-            val density = LocalDensity.current
-            // 跟踪滑动位置
-            var offsetX by remember { mutableFloatStateOf(0f) }
-            // 是否正在拖动
-            var isDragging by remember { mutableStateOf(false) }
-            // 计算最大滑动距离
-            val maxSlideWidth = with(density) { 200.dp.toPx() }
-            
-            // 修改动画逻辑，只在非拖动状态时才应用动画
-            val animatedOffset by animateFloatAsState(
-                // 拖动时直接使用实时偏移量，不使用动画值
-                targetValue = if (!isDragging) 0f else offsetX,
-                animationSpec = tween(300),
-                label = "slideAnimation"
-            )
-            
-            // 最终使用的偏移值 - 拖动时直接使用offsetX，松开时使用动画值
-            val finalOffset = if (isDragging) offsetX else animatedOffset
-            
-            // 创建黑色渐变背景
-            val gradientBackground = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Black,
-                    Color(0xFF333333),
-                    Color(0xFF555555)
-                )
-            )
-            
-            // 滑动轨道背景
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(Color(0xFFEEEEEE))
-                    .align(Alignment.Center)
-            )
-            
-            // 滑块
-            Box(
-                modifier = Modifier
-                    .width(with(density) { (60.dp + finalOffset.toDp()) })
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(gradientBackground)
-                    .shadow(4.dp, RoundedCornerShape(30.dp))
-                    .align(Alignment.CenterStart)
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta ->
-                            // 更新偏移量
-                            offsetX = (offsetX + delta).coerceIn(0f, maxSlideWidth)
-                        },
-                        onDragStarted = { isDragging = true },
-                        onDragStopped = {
-                            // 如果滑动到最右端，触发操作
-                            if (offsetX >= maxSlideWidth * 0.9f) {
-                                val totalSeconds = (selectedHours * 3600L) + 
-                                             (selectedMinutes * 60L) + 
-                                             selectedSeconds
-                            
-                                if (totalSeconds > 0) {
-                                    // 添加短暂延迟使滑块动画完成后再切换页面
-                                    isDragging = false
-                                    offsetX = 0f
-                                    
-                                    // 使用普通协程代替LaunchedEffect
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        delay(100)  // 短暂延迟
-                                        onStartClick(totalSeconds)
-                                    }
-                                } else {
-                                    // 显示提示
-                                    showToast = true
-                                    isDragging = false
-                                    offsetX = 0f
-                                }
-                            } else {
-                                // 重置状态，使滑块自动返回起始位置
-                                isDragging = false
-                                offsetX = 0f
-                            }
-                        }
-                    ),
-                contentAlignment = Alignment.Center
+        } else {
+            // 横屏布局
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 保持滑块简洁
+                // 左侧放时间选择器
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LandscapeTimePicker(
+                        selectedHours, selectedMinutes, selectedSeconds,
+                        onHoursChange = { selectedHours = it },
+                        onMinutesChange = { selectedMinutes = it },
+                        onSecondsChange = { selectedSeconds = it }
+                    )
+                }
+                
+                // 右侧放滑动按钮
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SlideToStartButton(
+                        modifier = Modifier
+                            .width(280.dp)
+                            .height(60.dp),
+                        selectedHours = selectedHours,
+                        selectedMinutes = selectedMinutes,
+                        selectedSeconds = selectedSeconds,
+                        onStartClick = onStartClick,
+                        onShowToast = { showToast = true }
+                    )
+                }
             }
         }
     }
 
-    // 添加提示对话框
+    // 提示对话框
     if (showToast) {
         AlertDialog(
             onDismissRequest = { showToast = false },
             title = { Text("提示") },
-            text = { Text("请设置大于0的倒计时时间") },
+            text = { Text(toastMessage) },
             confirmButton = {
                 TextButton(onClick = { showToast = false }) {
                     Text("确定")
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PortraitTimePicker(
+    hours: Int,
+    minutes: Int,
+    seconds: Int,
+    onHoursChange: (Int) -> Unit,
+    onMinutesChange: (Int) -> Unit,
+    onSecondsChange: (Int) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .height(200.dp)
+            .padding(horizontal = 32.dp),
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 0.dp,
+        color = Color.White
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-45).dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 小时选择器
+            NumberPicker(
+                range = 0..23,
+                onValueChange = onHoursChange,
+                suffix = ""
+            )
+            
+            Text(":", 
+                fontSize = 20.sp,
+                modifier = Modifier.offset(y = 39.dp)
+            )
+            
+            // 分钟选择器
+            NumberPicker(
+                range = 0..59,
+                onValueChange = onMinutesChange,
+                suffix = ""
+            )
+            
+            Text(":", 
+                fontSize = 20.sp,
+                modifier = Modifier.offset(y = 39.dp)
+            )
+            
+            // 秒选择器
+            NumberPicker(
+                range = 0..59,
+                onValueChange = onSecondsChange,
+                suffix = ""
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandscapeTimePicker(
+    hours: Int,
+    minutes: Int,
+    seconds: Int,
+    onHoursChange: (Int) -> Unit,
+    onMinutesChange: (Int) -> Unit,
+    onSecondsChange: (Int) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .height(180.dp)
+            .width(320.dp),
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 0.dp,
+        color = Color.White
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-40).dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 小时选择器
+            NumberPicker(
+                range = 0..23,
+                onValueChange = onHoursChange,
+                suffix = ""
+            )
+            
+            Text(":", 
+                fontSize = 20.sp,
+                modifier = Modifier.offset(y = 39.dp)
+            )
+            
+            // 分钟选择器
+            NumberPicker(
+                range = 0..59,
+                onValueChange = onMinutesChange,
+                suffix = ""
+            )
+            
+            Text(":", 
+                fontSize = 20.sp,
+                modifier = Modifier.offset(y = 39.dp)
+            )
+            
+            // 秒选择器
+            NumberPicker(
+                range = 0..59,
+                onValueChange = onSecondsChange,
+                suffix = ""
+            )
+        }
+    }
+}
+
+@Composable
+private fun SlideToStartButton(
+    modifier: Modifier = Modifier,
+    selectedHours: Int,
+    selectedMinutes: Int,
+    selectedSeconds: Int,
+    onStartClick: (Long) -> Unit,
+    onShowToast: () -> Unit
+) {
+    Box(modifier = modifier) {
+        // 使用本地密度转换器
+        val density = LocalDensity.current
+        // 跟踪滑动位置
+        var offsetX by remember { mutableFloatStateOf(0f) }
+        // 是否正在拖动
+        var isDragging by remember { mutableStateOf(false) }
+        // 使用onSizeChanged获取实际宽度
+        var buttonWidth by remember { mutableStateOf(250.dp) }
+        val maxSlideWidth = with(density) { buttonWidth.toPx() - 60.dp.toPx() }
+        
+        // 动画过渡逻辑
+        val animatedOffset by animateFloatAsState(
+            targetValue = offsetX,
+            animationSpec = spring(
+                dampingRatio = 0.8f,
+                stiffness = Spring.StiffnessLow,
+                visibilityThreshold = 0.1f
+            ),
+            label = "slideAnimation"
+        )
+        
+        val finalOffset = animatedOffset
+        
+        // 创建黑色渐变背景
+        val gradientBackground = Brush.horizontalGradient(
+            colors = listOf(
+                Color.Black,
+                Color(0xFF333333),
+                Color(0xFF555555)
+            )
+        )
+        
+        // 滑动轨道背景
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(Color(0xFFEEEEEE))
+                .align(Alignment.Center)
+                .onSizeChanged { size: IntSize ->
+                    // 更新按钮实际宽度
+                    buttonWidth = with(density) { size.width.toDp() }
+                }
+        )
+        
+        // 滑块
+        Box(
+            modifier = Modifier
+                .width(with(density) { (60.dp + finalOffset.toDp()) })
+                .height(60.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(gradientBackground)
+                .shadow(4.dp, RoundedCornerShape(30.dp))
+                .align(Alignment.CenterStart)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        val dampingFactor = 1f - (offsetX / maxSlideWidth) * 0.05f
+                        offsetX = (offsetX + delta * dampingFactor).coerceIn(0f, maxSlideWidth)
+                    },
+                    onDragStarted = { isDragging = true },
+                    onDragStopped = {
+                        if (offsetX >= maxSlideWidth) {
+                            val totalSeconds = (selectedHours * 3600L) + 
+                                     (selectedMinutes * 60L) + 
+                                     selectedSeconds
+                        
+                            if (totalSeconds > 0) {
+                                isDragging = false
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    delay(50)
+                                    offsetX = 0f
+                                    delay(100)
+                                    onStartClick(totalSeconds)
+                                }
+                            } else {
+                                onShowToast()
+                                isDragging = false
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    delay(50)
+                                    offsetX = 0f
+                                }
+                            }
+                        } else {
+                            isDragging = false
+                            CoroutineScope(Dispatchers.Main).launch {
+                                delay(30)
+                                offsetX = 0f
+                            }
+                        }
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+           
+            
+            // 缩放效果
+            val scale = 1f + (finalOffset / maxSlideWidth) * 0.05f
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+            )
+        }
     }
 }
 

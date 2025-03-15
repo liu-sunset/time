@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,8 +43,16 @@ import android.view.View
 import androidx.compose.ui.platform.LocalView
 
 @Composable
-fun CountdownScreen(totalSeconds: Long, onFinish: () -> Unit, onBack: () -> Unit) {
+fun CountdownScreen(
+    totalSeconds: Long, 
+    onFinish: () -> Unit, 
+    onBack: () -> Unit,
+    isVibrationEnabled: Boolean,
+    onVibrationToggle: (Boolean) -> Unit
+) {
     val view = LocalView.current
+    var showToast by remember { mutableStateOf(false) }
+    var toastMessage by remember { mutableStateOf("") }
     
     LaunchedEffect(key1 = Unit) {
         // 修改为使用 from 方法获取 WindowInsetsControllerCompat 实例
@@ -126,6 +136,42 @@ fun CountdownScreen(totalSeconds: Long, onFinish: () -> Unit, onBack: () -> Unit
                 }
             }
         }
+        
+        // 添加震动开关按钮
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        spotColor = Color.Black.copy(alpha = 0.25f)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFFE0E0E0),
+                onClick = {
+                    onVibrationToggle(!isVibrationEnabled)
+                    toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
+                    showToast = true
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (isVibrationEnabled) "震动开" else "震动关",
+                        fontSize = 14.sp,
+                        color = Color.Black.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
 
         // 原有的倒计时显示内容
         Row(
@@ -186,6 +232,20 @@ fun CountdownScreen(totalSeconds: Long, onFinish: () -> Unit, onBack: () -> Unit
                 cardHeight = cardHeight
             )
         }
+    }
+    
+    // 添加提示对话框
+    if (showToast) {
+        AlertDialog(
+            onDismissRequest = { showToast = false },
+            title = { Text("提示") },
+            text = { Text(toastMessage) },
+            confirmButton = {
+                TextButton(onClick = { showToast = false }) {
+                    Text("确定")
+                }
+            }
+        )
     }
 }
 

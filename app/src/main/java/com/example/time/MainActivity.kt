@@ -6,6 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.runtime.*
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.os.Build
+import android.content.Context
 import com.example.time.ui.screens.CountdownScreen
 import com.example.time.ui.screens.TimePickerScreen
 import com.example.time.ui.theme.TimeTheme
@@ -15,10 +19,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        
         setContent {
             TimeTheme {
                 var isCountdownStarted by remember { mutableStateOf(false) }
                 var totalSeconds by remember { mutableStateOf(0L) }
+                var isVibrationEnabled by remember { mutableStateOf(false) }
 
                 LaunchedEffect(isCountdownStarted) {
                     if (isCountdownStarted) {
@@ -36,15 +43,33 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { started ->
                     if (!started) {
-                        TimePickerScreen { seconds ->
-                            totalSeconds = seconds
-                            isCountdownStarted = true
-                        }
+                        TimePickerScreen(
+                            onStartClick = { seconds ->
+                                totalSeconds = seconds
+                                isCountdownStarted = true
+                            }
+                        )
                     } else {
                         CountdownScreen(
                             totalSeconds = totalSeconds,
-                            onFinish = { /* 移除自动返回的行为 */ },
-                            onBack = { isCountdownStarted = false }
+                            onFinish = {
+                                if (isVibrationEnabled) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        vibrator.vibrate(VibrationEffect.createWaveform(
+                                            longArrayOf(0, 500, 500, 500),
+                                            -1
+                                        ))
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        vibrator.vibrate(longArrayOf(0, 500, 500, 500), -1)
+                                    }
+                                }
+                            },
+                            onBack = { isCountdownStarted = false },
+                            isVibrationEnabled = isVibrationEnabled,
+                            onVibrationToggle = { enabled ->
+                                isVibrationEnabled = enabled
+                            }
                         )
                     }
                 }
