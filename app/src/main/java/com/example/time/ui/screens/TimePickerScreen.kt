@@ -50,10 +50,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalView
 
 @Composable
 fun TimePickerScreen(
-    onStartClick: (Long) -> Unit
+    onStartClick: (Long) -> Unit,
+    isVibrationEnabled: Boolean = false,
+    onVibrationToggle: (Boolean) -> Unit = {},
+    isKeepScreenOn: Boolean = false,
+    onKeepScreenOnToggle: (Boolean) -> Unit = {},
+    isDarkMode: Boolean = false,
+    onDarkModeToggle: (Boolean) -> Unit = {}
 ) {
     var selectedHours by rememberSaveable { mutableStateOf(0) }
     var selectedMinutes by rememberSaveable { mutableStateOf(0) }
@@ -61,7 +68,7 @@ fun TimePickerScreen(
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("时间最小为0") }
     
-    var isToolEnabled by rememberSaveable { mutableStateOf(false) }
+    var isToolMenuExpanded by remember { mutableStateOf(false) }
     
     val configuration = LocalConfiguration.current
     val isLandscape = remember(configuration) { 
@@ -85,12 +92,29 @@ fun TimePickerScreen(
         // 在组合成功后执行，例如预热某些计算
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val view = LocalView.current
+    DisposableEffect(isKeepScreenOn) {
+        view.keepScreenOn = isKeepScreenOn
+        onDispose {
+            view.keepScreenOn = false
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            )
+    ) {
+        // 只保留工具按钮
         Box(
             modifier = Modifier
                 .padding(16.dp)
                 .align(Alignment.TopEnd)
         ) {
+            // 工具按钮
             Surface(
                 modifier = Modifier
                     .shadow(
@@ -101,9 +125,7 @@ fun TimePickerScreen(
                 shape = RoundedCornerShape(20.dp),
                 color = Color(0xFFE0E0E0),
                 onClick = {
-                    isToolEnabled = !isToolEnabled
-                    toastMessage = if (isToolEnabled) "工具已开启" else "工具已关闭"
-                    showToast = true
+                    isToolMenuExpanded = true
                 }
             ) {
                 Row(
@@ -113,10 +135,118 @@ fun TimePickerScreen(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = if (isToolEnabled) "工具开" else "工具关",
+                        text = "工具",
                         fontSize = 14.sp,
                         color = Color.Black.copy(alpha = 0.7f)
                     )
+                }
+            }
+            
+            // 下拉菜单
+            DropdownMenu(
+                expanded = isToolMenuExpanded,
+                onDismissRequest = { isToolMenuExpanded = false },
+                modifier = Modifier
+                    .background(Color.White)
+                    .shadow(4.dp)
+            ) {
+                // 震动选项 - 改为Surface组件
+                Box(modifier = Modifier.padding(8.dp)) {
+                    Surface(
+                        modifier = Modifier
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                spotColor = Color.Black.copy(alpha = 0.25f)
+                            ),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFE0E0E0),
+                        onClick = {
+                            onVibrationToggle(!isVibrationEnabled)
+                            toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
+                            showToast = true
+                            isToolMenuExpanded = false
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = if (isVibrationEnabled) "震动关闭" else "震动开启",
+                                fontSize = 14.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                
+                // 常亮选项 - 改为Surface组件
+                Box(modifier = Modifier.padding(8.dp)) {
+                    Surface(
+                        modifier = Modifier
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                spotColor = Color.Black.copy(alpha = 0.25f)
+                            ),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFE0E0E0),
+                        onClick = {
+                            onKeepScreenOnToggle(!isKeepScreenOn)
+                            toastMessage = if (!isKeepScreenOn) "屏幕常亮已开启" else "屏幕常亮已关闭"
+                            showToast = true
+                            isToolMenuExpanded = false
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = if (isKeepScreenOn) "常亮关闭" else "常亮开启",
+                                fontSize = 14.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                
+                // 暗夜模式选项 - 改为Surface组件
+                Box(modifier = Modifier.padding(8.dp)) {
+                    Surface(
+                        modifier = Modifier
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                spotColor = Color.Black.copy(alpha = 0.25f)
+                            ),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFE0E0E0),
+                        onClick = {
+                            onDarkModeToggle(!isDarkMode)
+                            toastMessage = if (!isDarkMode) "暗夜模式已开启" else "暗夜模式已关闭"
+                            showToast = true
+                            isToolMenuExpanded = false
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = if (isDarkMode) "暗夜关闭" else "暗夜开启",
+                                fontSize = 14.sp,
+                                color = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
             }
         }

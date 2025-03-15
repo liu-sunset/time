@@ -46,11 +46,21 @@ fun CountdownScreen(
     onBack: () -> Unit,
     isVibrationEnabled: Boolean,
     onVibrationToggle: (Boolean) -> Unit,
-    vibrator: Vibrator
+    vibrator: Vibrator,
+    isKeepScreenOn: Boolean = false,
+    onKeepScreenOnToggle: (Boolean) -> Unit = {}
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
+    
+    // 添加常亮功能
+    DisposableEffect(isKeepScreenOn) {
+        view.keepScreenOn = isKeepScreenOn
+        onDispose {
+            view.keepScreenOn = false
+        }
+    }
     
     // 添加动画状态
     var isCountdownFinished by remember { mutableStateOf(false) }
@@ -106,7 +116,10 @@ fun CountdownScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFAFAFA))
+            .background(
+                Color(0xFFFAFAFA),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            )
     ) {
         // 添加返回按钮
         Box(
@@ -133,42 +146,6 @@ fun CountdownScreen(
                     Text(
                         text = "×",
                         fontSize = 24.sp,
-                        color = Color.Black.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-        
-        // 添加震动开关按钮
-        Box(
-            modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.TopEnd)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = RoundedCornerShape(20.dp),
-                        spotColor = Color.Black.copy(alpha = 0.25f)
-                    ),
-                shape = RoundedCornerShape(20.dp),
-                color = Color(0xFFE0E0E0),
-                onClick = {
-                    onVibrationToggle(!isVibrationEnabled)
-                    toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
-                    showToast = true
-                }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (isVibrationEnabled) "震动开" else "震动关",
-                        fontSize = 14.sp,
                         color = Color.Black.copy(alpha = 0.7f)
                     )
                 }
@@ -258,39 +235,6 @@ fun CountdownScreen(
                 }
             }
         )
-    }
-
-    // 修复震动相关的DisposableEffect
-    DisposableEffect(isCountdownFinished, isVibrationEnabled) {
-        var job: Job? = null
-        
-        // 当倒计时结束且震动开启时
-        if (isCountdownFinished && isVibrationEnabled) {
-            // 创建协程作用域
-            val coroutineScope = CoroutineScope(Dispatchers.Main)
-            
-            job = coroutineScope.launch {
-                while (true) { // 使用true替代isActive，因为我们在使用job来控制
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        vibrator.vibrate(
-                            VibrationEffect.createWaveform(
-                                longArrayOf(0, 400, 600),
-                                0 // 从索引0开始重复
-                            )
-                        )
-                    } else {
-                        @Suppress("DEPRECATION")
-                        vibrator.vibrate(longArrayOf(0, 400, 600), 0)
-                    }
-                    delay(2000) // 在协程内调用delay
-                }
-            }
-        }
-        
-        onDispose {
-            job?.cancel()
-            vibrator.cancel()
-        }
     }
 }
 

@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity() {
                     var isCountdownStarted by remember { mutableStateOf(false) }
                     var totalSeconds by remember { mutableStateOf(0L) }
                     var isVibrationEnabled by remember { mutableStateOf(false) }
+                    var isKeepScreenOn by remember { mutableStateOf(false) }
+                    var isDarkMode by remember { mutableStateOf(false) }
                     
                     // 优化7: 屏幕方向变更使用LaunchedEffect而不是每次重组都执行
                     LaunchedEffect(isCountdownStarted) {
@@ -85,6 +87,18 @@ class MainActivity : ComponentActivity() {
                                     onStartClick = { seconds ->
                                         totalSeconds = seconds
                                         isCountdownStarted = true
+                                    },
+                                    isVibrationEnabled = isVibrationEnabled,
+                                    onVibrationToggle = { enabled ->
+                                        isVibrationEnabled = enabled
+                                    },
+                                    isKeepScreenOn = isKeepScreenOn,
+                                    onKeepScreenOnToggle = { enabled ->
+                                        isKeepScreenOn = enabled
+                                    },
+                                    isDarkMode = isDarkMode,
+                                    onDarkModeToggle = { enabled ->
+                                        isDarkMode = enabled
                                     }
                                 )
                             } else {
@@ -106,7 +120,11 @@ class MainActivity : ComponentActivity() {
                                             stopVibration(vibrator)
                                         }
                                     },
-                                    vibrator = vibrator // 传递vibrator实例
+                                    vibrator = vibrator, // 传递vibrator实例
+                                    isKeepScreenOn = isKeepScreenOn,
+                                    onKeepScreenOnToggle = { enabled ->
+                                        isKeepScreenOn = enabled
+                                    }
                                 )
                             }
                         }
