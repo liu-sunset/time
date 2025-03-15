@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.layout.systemBarsPadding
 
 @Composable
 fun TimePickerScreen(
@@ -104,8 +105,7 @@ fun TimePickerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA)
             )
     ) {
         // 只保留工具按钮
