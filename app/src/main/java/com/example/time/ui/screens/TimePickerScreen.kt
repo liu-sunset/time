@@ -150,7 +150,7 @@ fun TimePickerScreen(
                     .background(Color.White)
                     .shadow(4.dp)
             ) {
-                // 震动选项 - 改为Surface组件
+                // 震动选项 - 改为白色背景
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -160,7 +160,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFE0E0E0),
+                        color = Color.White,
                         onClick = {
                             onVibrationToggle(!isVibrationEnabled)
                             toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
@@ -183,7 +183,7 @@ fun TimePickerScreen(
                     }
                 }
                 
-                // 常亮选项 - 改为Surface组件
+                // 常亮选项 - 改为白色背景
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -193,7 +193,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFE0E0E0),
+                        color = Color.White,
                         onClick = {
                             onKeepScreenOnToggle(!isKeepScreenOn)
                             toastMessage = if (!isKeepScreenOn) "屏幕常亮已开启" else "屏幕常亮已关闭"
@@ -216,7 +216,7 @@ fun TimePickerScreen(
                     }
                 }
                 
-                // 暗夜模式选项 - 改为Surface组件
+                // 暗夜模式选项 - 改为白色背景
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -226,7 +226,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFE0E0E0),
+                        color = Color.White,
                         onClick = {
                             onDarkModeToggle(!isDarkMode)
                             toastMessage = if (!isDarkMode) "暗夜模式已开启" else "暗夜模式已关闭"
