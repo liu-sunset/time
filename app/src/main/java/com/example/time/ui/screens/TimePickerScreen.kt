@@ -147,10 +147,9 @@ fun TimePickerScreen(
                 expanded = isToolMenuExpanded,
                 onDismissRequest = { isToolMenuExpanded = false },
                 modifier = Modifier
-                    .background(Color.White)
-                    .shadow(4.dp)
+                    .background(Color.White)  // 将白色背景改为透明
             ) {
-                // 震动选项 - 改为白色背景
+                // 震动选项 - 改为与工具按钮相同的样式
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -160,7 +159,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
+                        color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onVibrationToggle(!isVibrationEnabled)
                             toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
@@ -183,7 +182,7 @@ fun TimePickerScreen(
                     }
                 }
                 
-                // 常亮选项 - 改为白色背景
+                // 常亮选项 - 改为与工具按钮相同的样式
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -193,7 +192,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
+                        color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onKeepScreenOnToggle(!isKeepScreenOn)
                             toastMessage = if (!isKeepScreenOn) "屏幕常亮已开启" else "屏幕常亮已关闭"
@@ -216,7 +215,7 @@ fun TimePickerScreen(
                     }
                 }
                 
-                // 暗夜模式选项 - 改为白色背景
+                // 暗夜模式选项 - 改为与工具按钮相同的样式
                 Box(modifier = Modifier.padding(8.dp)) {
                     Surface(
                         modifier = Modifier
@@ -226,7 +225,7 @@ fun TimePickerScreen(
                                 spotColor = Color.Black.copy(alpha = 0.25f)
                             ),
                         shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
+                        color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onDarkModeToggle(!isDarkMode)
                             toastMessage = if (!isDarkMode) "暗夜模式已开启" else "暗夜模式已关闭"
