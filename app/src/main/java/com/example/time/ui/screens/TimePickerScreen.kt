@@ -174,8 +174,6 @@ fun TimePickerScreen(
                         color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onVibrationToggle(!isVibrationEnabled)
-                            toastMessage = if (!isVibrationEnabled) "震动提醒已开启" else "震动提醒已关闭"
-                            showToast = true
                             isToolMenuExpanded = false
                         }
                     ) {
@@ -207,8 +205,6 @@ fun TimePickerScreen(
                         color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onKeepScreenOnToggle(!isKeepScreenOn)
-                            toastMessage = if (!isKeepScreenOn) "屏幕常亮已开启" else "屏幕常亮已关闭"
-                            showToast = true
                             isToolMenuExpanded = false
                         }
                     ) {
@@ -240,8 +236,6 @@ fun TimePickerScreen(
                         color = Color(0xFFE0E0E0),  // 改为与工具按钮相同的颜色
                         onClick = {
                             onDarkModeToggle(!isDarkMode)
-                            toastMessage = if (!isDarkMode) "暗夜模式已开启" else "暗夜模式已关闭"
-                            showToast = true
                             isToolMenuExpanded = false
                         }
                     ) {
@@ -272,7 +266,8 @@ fun TimePickerScreen(
                     selectedHours, selectedMinutes, selectedSeconds,
                     onHoursChange = { selectedHours = it },
                     onMinutesChange = { selectedMinutes = it },
-                    onSecondsChange = { selectedSeconds = it }
+                    onSecondsChange = { selectedSeconds = it },
+                    isDarkMode = isDarkMode
                 )
                 
                 SlideToStartButton(
@@ -304,7 +299,8 @@ fun TimePickerScreen(
                         selectedHours, selectedMinutes, selectedSeconds,
                         onHoursChange = { selectedHours = it },
                         onMinutesChange = { selectedMinutes = it },
-                        onSecondsChange = { selectedSeconds = it }
+                        onSecondsChange = { selectedSeconds = it },
+                        isDarkMode = isDarkMode
                     )
                 }
                 
@@ -328,19 +324,6 @@ fun TimePickerScreen(
             }
         }
     }
-
-    if (showToast) {
-        AlertDialog(
-            onDismissRequest = { showToast = false },
-            title = { Text("提示") },
-            text = { Text(toastMessage) },
-            confirmButton = {
-                TextButton(onClick = { showToast = false }) {
-                    Text("确定")
-                }
-            }
-        )
-    }
 }
 
 @Composable
@@ -350,7 +333,8 @@ private fun PortraitTimePicker(
     seconds: Int,
     onHoursChange: (Int) -> Unit,
     onMinutesChange: (Int) -> Unit,
-    onSecondsChange: (Int) -> Unit
+    onSecondsChange: (Int) -> Unit,
+    isDarkMode: Boolean
 ) {
     Surface(
         modifier = Modifier
@@ -358,7 +342,7 @@ private fun PortraitTimePicker(
             .padding(horizontal = 32.dp),
         shape = MaterialTheme.shapes.large,
         tonalElevation = 0.dp,
-        color = Color.White
+        color = if (isDarkMode) Color(0xFF212121) else Color.White
     ) {
         Row(
             modifier = Modifier
@@ -370,29 +354,36 @@ private fun PortraitTimePicker(
             NumberPicker(
                 range = 0..23,
                 onValueChange = onHoursChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
             
-            Text(":", 
+            Text(
+                text = ":",
                 fontSize = 20.sp,
+                color = if (isDarkMode) Color.White else Color.Black,
                 modifier = Modifier.offset(y = 39.dp)
             )
             
             NumberPicker(
                 range = 0..59,
                 onValueChange = onMinutesChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
             
-            Text(":", 
+            Text(
+                text = ":",
                 fontSize = 20.sp,
+                color = if (isDarkMode) Color.White else Color.Black,
                 modifier = Modifier.offset(y = 39.dp)
             )
             
             NumberPicker(
                 range = 0..59,
                 onValueChange = onSecondsChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
         }
     }
@@ -405,7 +396,8 @@ private fun LandscapeTimePicker(
     seconds: Int,
     onHoursChange: (Int) -> Unit,
     onMinutesChange: (Int) -> Unit,
-    onSecondsChange: (Int) -> Unit
+    onSecondsChange: (Int) -> Unit,
+    isDarkMode: Boolean
 ) {
     Surface(
         modifier = Modifier
@@ -413,7 +405,7 @@ private fun LandscapeTimePicker(
             .width(320.dp),
         shape = MaterialTheme.shapes.large,
         tonalElevation = 0.dp,
-        color = Color.White
+        color = if (isDarkMode) Color(0xFF212121) else Color.White
     ) {
         Row(
             modifier = Modifier
@@ -425,29 +417,36 @@ private fun LandscapeTimePicker(
             NumberPicker(
                 range = 0..23,
                 onValueChange = onHoursChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
             
-            Text(":", 
+            Text(
+                text = ":",
                 fontSize = 20.sp,
+                color = if (isDarkMode) Color.White else Color.Black,
                 modifier = Modifier.offset(y = 39.dp)
             )
             
             NumberPicker(
                 range = 0..59,
                 onValueChange = onMinutesChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
             
-            Text(":", 
+            Text(
+                text = ":",
                 fontSize = 20.sp,
+                color = if (isDarkMode) Color.White else Color.Black,
                 modifier = Modifier.offset(y = 39.dp)
             )
             
             NumberPicker(
                 range = 0..59,
                 onValueChange = onSecondsChange,
-                suffix = ""
+                suffix = "",
+                isDarkMode = isDarkMode
             )
         }
     }
@@ -558,7 +557,8 @@ private fun SlideToStartButton(
 private fun NumberPicker(
     range: IntRange,
     onValueChange: (Int) -> Unit,
-    suffix: String
+    suffix: String,
+    isDarkMode: Boolean
 ) {
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = range.first
@@ -643,7 +643,7 @@ private fun NumberPicker(
                             fontSize = 42.sp,
                             fontWeight = if (index == centerItemIndex.value) FontWeight.Bold else FontWeight.Normal,
                             color = if (index == centerItemIndex.value) 
-                                Color.Black
+                                if (isDarkMode) Color.White else Color.Black
                             else 
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )

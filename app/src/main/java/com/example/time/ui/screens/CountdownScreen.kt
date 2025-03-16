@@ -48,7 +48,8 @@ fun CountdownScreen(
     onVibrationToggle: (Boolean) -> Unit,
     vibrator: Vibrator,
     isKeepScreenOn: Boolean = false,
-    onKeepScreenOnToggle: (Boolean) -> Unit = {}
+    onKeepScreenOnToggle: (Boolean) -> Unit = {},
+    isDarkMode: Boolean
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
@@ -117,7 +118,7 @@ fun CountdownScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Color(0xFFFAFAFA),
+                if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
             )
     ) {
@@ -136,7 +137,7 @@ fun CountdownScreen(
                         spotColor = Color.Black.copy(alpha = 0.25f)
                     ),
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFFE0E0E0),
+                color = if (isDarkMode) Color(0xFF212121) else Color(0xFFE0E0E0),
                 onClick = onBack
             ) {
                 Box(
@@ -146,7 +147,7 @@ fun CountdownScreen(
                     Text(
                         text = "×",
                         fontSize = 24.sp,
-                        color = Color.Black.copy(alpha = 0.7f)
+                        color = if (isDarkMode) Color.White else Color.Black.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -179,7 +180,7 @@ fun CountdownScreen(
                     // 分隔符
                     Text(
                         text = ":",
-                        color = Color.Black,
+                        color = if (isDarkMode) Color.White else Color.Black,
                         fontSize = if (hasHours) 60.sp else 80.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp)
@@ -198,7 +199,7 @@ fun CountdownScreen(
                 // 分隔符
                 Text(
                     text = ":",
-                    color = Color.Black,
+                    color = if (isDarkMode) Color.White else Color.Black,
                     fontSize = if (hasHours) 60.sp else 80.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp)
