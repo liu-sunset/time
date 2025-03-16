@@ -52,6 +52,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.zIndex
 
 @Composable
 fun TimePickerScreen(
@@ -108,13 +111,12 @@ fun TimePickerScreen(
                 if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA)
             )
     ) {
-        // 只保留工具按钮
+        // 工具按钮
         Box(
             modifier = Modifier
                 .padding(16.dp)
                 .align(Alignment.TopEnd)
         ) {
-            // 工具按钮
             Surface(
                 modifier = Modifier
                     .shadow(
@@ -125,7 +127,7 @@ fun TimePickerScreen(
                 shape = RoundedCornerShape(20.dp),
                 color = Color(0xFFE0E0E0),
                 onClick = {
-                    isToolMenuExpanded = true
+                    isToolMenuExpanded = !isToolMenuExpanded
                 }
             ) {
                 Row(
@@ -141,13 +143,23 @@ fun TimePickerScreen(
                     )
                 }
             }
-            
-            // 下拉菜单
-            DropdownMenu(
-                expanded = isToolMenuExpanded,
-                onDismissRequest = { isToolMenuExpanded = false },
+        }
+        
+        // 使用条件判断控制下拉菜单的显示
+        if (isToolMenuExpanded) {
+            Column(
                 modifier = Modifier
-                    .background(Color.White)  // 将白色背景改为透明
+                    .padding(top = 60.dp, end = 16.dp)
+                    .align(Alignment.TopEnd)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        spotColor = Color.Black.copy(alpha = 0.25f)
+                    )
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .padding(8.dp)
+                    .zIndex(1f) // 将展开的菜单置顶
             ) {
                 // 震动选项 - 改为与工具按钮相同的样式
                 Box(modifier = Modifier.padding(8.dp)) {
