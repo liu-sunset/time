@@ -367,7 +367,7 @@ private fun SlideToStartButton(
                 .width(with(density) { (60.dp + finalOffset.toDp()) })
                 .height(60.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(if (isDarkMode) Color(0xFF4CAF50) else Color.Black)
+                .background(if (isDarkMode) Color.White else Color.Black)
                 .shadow(4.dp, RoundedCornerShape(30.dp))
                 .align(Alignment.CenterStart)
                 .draggable(
