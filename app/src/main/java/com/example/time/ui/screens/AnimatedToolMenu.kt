@@ -224,9 +224,9 @@ fun AnimatedToolMenu(
                             Switch(
                                 checked = menuItem.isEnabled,
                                 onCheckedChange = { menuItem.onClick() },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color(0xFF2196F3),
-                                    checkedTrackColor = Color(0xFF2196F3).copy(alpha = 0.5f),
+                                colors = SwitchDefaults.colors( 
+                                    checkedThumbColor = if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                                    checkedTrackColor = if (isDarkMode) Color(0xFF4CAF50).copy(alpha = 0.5f) else Color(0xFF2196F3).copy(alpha = 0.5f),
                                     uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.LightGray,
                                     uncheckedTrackColor = if (isDarkMode) Color.DarkGray else Color.LightGray.copy(alpha = 0.6f)
                                 )

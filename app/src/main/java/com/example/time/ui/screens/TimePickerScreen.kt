@@ -133,7 +133,8 @@ fun TimePickerScreen(
                     selectedMinutes = selectedMinutes,
                     selectedSeconds = selectedSeconds,
                     onStartClick = onStartClick,
-                    onShowToast = { showToast = true }
+                    onShowToast = { showToast = true },
+                    isDarkMode = isDarkMode
                 )
             }
         } else {
@@ -171,7 +172,8 @@ fun TimePickerScreen(
                         selectedMinutes = selectedMinutes,
                         selectedSeconds = selectedSeconds,
                         onStartClick = onStartClick,
-                        onShowToast = { showToast = true }
+                        onShowToast = { showToast = true },
+                        isDarkMode = isDarkMode
                     )
                 }
             }
@@ -326,7 +328,8 @@ private fun SlideToStartButton(
     selectedMinutes: Int,
     selectedSeconds: Int,
     onStartClick: (Long) -> Unit,
-    onShowToast: () -> Unit
+    onShowToast: () -> Unit,
+    isDarkMode: Boolean
 ) {
     Box(modifier = modifier) {
         val density = LocalDensity.current
@@ -352,7 +355,7 @@ private fun SlideToStartButton(
                 .fillMaxWidth()
                 .height(60.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(Color(0xFFEEEEEE))
+                .background(if (isDarkMode) Color(0xFF2C2C2C) else Color(0xFFEEEEEE))
                 .align(Alignment.Center)
                 .onSizeChanged { size: IntSize ->
                     buttonWidth = with(density) { size.width.toDp() }
@@ -364,7 +367,7 @@ private fun SlideToStartButton(
                 .width(with(density) { (60.dp + finalOffset.toDp()) })
                 .height(60.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(Color.Black)
+                .background(if (isDarkMode) Color(0xFF4CAF50) else Color.Black)
                 .shadow(4.dp, RoundedCornerShape(30.dp))
                 .align(Alignment.CenterStart)
                 .draggable(
