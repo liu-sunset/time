@@ -125,7 +125,10 @@ class MainActivity : ComponentActivity() {
                                     onKeepScreenOnToggle = { enabled ->
                                         isKeepScreenOn = enabled
                                     },
-                                    isDarkMode = isDarkMode // 传递isDarkMode
+                                    isDarkMode = isDarkMode,
+                                    onDarkModeToggle = { enabled ->
+                                        isDarkMode = enabled
+                                    }
                                 )
                             }
                         }

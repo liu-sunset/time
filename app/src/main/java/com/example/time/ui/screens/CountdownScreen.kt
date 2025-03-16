@@ -38,6 +38,14 @@ import kotlinx.coroutines.*
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.zIndex
 
 @Composable
 fun CountdownScreen(
@@ -49,7 +57,8 @@ fun CountdownScreen(
     vibrator: Vibrator,
     isKeepScreenOn: Boolean = false,
     onKeepScreenOnToggle: (Boolean) -> Unit = {},
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onDarkModeToggle: (Boolean) -> Unit = {}
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
@@ -139,6 +148,9 @@ fun CountdownScreen(
         }
     }.value
 
+    // 添加工具菜单状态
+    var isToolMenuExpanded by remember { mutableStateOf(false) }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -177,6 +189,87 @@ fun CountdownScreen(
                 }
             }
         }
+        
+        // 添加工具按钮
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd)
+        ) {
+            // 添加按钮旋转动画
+            val buttonRotation by animateFloatAsState(
+                targetValue = if (isToolMenuExpanded) 225f else 0f,  // 增加旋转角度到225度
+                animationSpec = tween(
+                    durationMillis = 400, 
+                    easing = FastOutSlowInEasing
+                ),
+                label = "buttonRotation"
+            )
+            
+            // 添加按钮缩放动画
+            val buttonScale by animateFloatAsState(
+                targetValue = if (isToolMenuExpanded) 1.2f else 1.0f,  // 增加缩放至1.2倍
+                animationSpec = tween(
+                    durationMillis = 200,
+                    easing = LinearEasing  // 修改为LinearEasing
+                ),
+                label = "buttonScale"
+            )
+            
+            // 添加颜色变化动画
+            val buttonColor by animateColorAsState(
+                targetValue = if (isToolMenuExpanded) 
+                    if (isDarkMode) Color(0xFF3D3D3D) else Color(0xFFC0C0C0)
+                else 
+                    if (isDarkMode) Color(0xFF212121) else Color(0xFFE0E0E0),
+                animationSpec = tween<Color>(durationMillis = 300),  // 添加显式类型参数
+                label = "buttonColor"
+            )
+            
+            Surface(
+                modifier = Modifier
+                    .size(40.dp)
+                    .graphicsLayer { 
+                        rotationZ = buttonRotation
+                        scaleX = buttonScale
+                        scaleY = buttonScale
+                    }
+                    .shadow(
+                        elevation = if (isToolMenuExpanded) 8.dp else 4.dp,  // 增加阴影深度变化
+                        shape = RoundedCornerShape(20.dp),
+                        spotColor = Color.Black.copy(alpha = 0.25f)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                color = buttonColor,  // 使用动画颜色
+                onClick = { isToolMenuExpanded = !isToolMenuExpanded }
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "设置",
+                        tint = if (isDarkMode) Color.White else Color.Black.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+        
+        // 工具菜单展开动画
+        com.example.time.ui.screens.AnimatedToolMenu(
+            isExpanded = isToolMenuExpanded,
+            isVibrationEnabled = isVibrationEnabled,
+            onVibrationToggle = onVibrationToggle,
+            isKeepScreenOn = isKeepScreenOn,
+            onKeepScreenOnToggle = onKeepScreenOnToggle,
+            isDarkMode = isDarkMode,
+            onDarkModeToggle = onDarkModeToggle,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 64.dp, end = 16.dp)
+                .zIndex(1f)
+        )
 
         // 根据倒计时状态显示不同内容
         if (!isCountdownFinished) {
@@ -466,7 +559,7 @@ fun FlipDigit(
         }
         
         // 中间分隔线
-        Divider(
+        CustomDivider(
             color = Color(0xFFEEEEEE),
             thickness = 1.dp,
             modifier = Modifier.align(Alignment.Center)
@@ -475,43 +568,12 @@ fun FlipDigit(
 }
 
 @Composable
-fun Divider(color: Color, thickness: androidx.compose.ui.unit.Dp, modifier: Modifier) {
+fun CustomDivider(color: Color, thickness: androidx.compose.ui.unit.Dp, modifier: Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(thickness)
             .background(color)
-    )
-}
-
-@Composable
-fun AlarmClockAnimation(
-    modifier: Modifier = Modifier
-) {
-    // 创建无限重复的动画
-    val infiniteTransition = rememberInfiniteTransition(label = "alarmAnimation")
-    
-    // 闹钟摇动动画 - 增加幅度从5度到12度
-    val clockRotation by infiniteTransition.animateFloat(
-        initialValue = -12f,
-        targetValue = 12f, 
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "clockRotation"
-    )
-    
-    // 使用图像资源
-    Image(
-        painter = painterResource(id = R.drawable.alarm_clock),
-        contentDescription = "闹钟",
-        modifier = modifier
-            .size(200.dp)
-            .graphicsLayer {
-                rotationZ = clockRotation
-            },
-        colorFilter = ColorFilter.tint(Color.Gray)
     )
 }
 
