@@ -324,6 +324,20 @@ fun TimePickerScreen(
             }
         }
     }
+
+    // 添加提示对话框
+    if (showToast) {
+        AlertDialog(
+            onDismissRequest = { showToast = false },
+            title = { Text("提示") },
+            text = { Text(toastMessage) },
+            confirmButton = {
+                TextButton(onClick = { showToast = false }) {
+                    Text("确定")
+                }
+            }
+        )
+    }
 }
 
 @Composable
