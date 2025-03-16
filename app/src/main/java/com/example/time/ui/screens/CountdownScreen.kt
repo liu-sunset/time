@@ -57,8 +57,23 @@ fun CountdownScreen(
     
     // 添加常亮功能
     DisposableEffect(isKeepScreenOn) {
+        // 获取Activity和Window
+        val activity = view.context as? android.app.Activity
+        activity?.window?.let { window ->
+            // 直接在Window级别设置FLAG_KEEP_SCREEN_ON标志
+            if (isKeepScreenOn) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+        
+        // 同时也设置view的keepScreenOn属性作为双重保障
         view.keepScreenOn = isKeepScreenOn
+        
         onDispose {
+            // 清除窗口标志
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             view.keepScreenOn = false
         }
     }
