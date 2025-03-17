@@ -92,12 +92,8 @@ fun CountdownScreen(
     var toastMessage by remember { mutableStateOf("") }
     
     // 使用本地或服务提供的剩余时间
-    var remainingSeconds by remember { 
-        mutableStateOf(serviceRemainingSeconds ?: totalSeconds) 
-    }
-    var prevRemainingSeconds by remember { 
-        mutableStateOf(serviceRemainingSeconds ?: totalSeconds) 
-    }
+    var remainingSeconds by remember { mutableStateOf(totalSeconds) }
+    var prevRemainingSeconds by remember { mutableStateOf(totalSeconds + 1) }
     
     // 使用服务状态或本地状态
     var isCountdownFinished by remember { 
@@ -106,6 +102,9 @@ fun CountdownScreen(
     
     // 添加一个变量来跟踪是否是首次执行
     var isFirstExecution by remember { mutableStateOf(true) }
+    
+    // 用来追踪是否从服务更新了时间
+    var isUpdatingFromService by remember { mutableStateOf(false) }
     
     // 当进入界面时启动服务
     LaunchedEffect(Unit) {
@@ -121,8 +120,10 @@ fun CountdownScreen(
     // 监听来自服务的剩余时间更新
     LaunchedEffect(serviceRemainingSeconds) {
         serviceRemainingSeconds?.let {
-            prevRemainingSeconds = remainingSeconds
-            remainingSeconds = it
+            if (it != remainingSeconds) {  // 只在值变化时更新
+                prevRemainingSeconds = remainingSeconds
+                remainingSeconds = it
+            }
         }
     }
     
@@ -141,7 +142,7 @@ fun CountdownScreen(
             isCountdownFinished = false
             isFirstExecution = true
             remainingSeconds = totalSeconds
-            prevRemainingSeconds = totalSeconds
+            prevRemainingSeconds = totalSeconds + 1
         } else if (totalSeconds <= 0) {
             showToast = true
             toastMessage = "倒计时时间不能为0，请返回重新设置"
@@ -264,32 +265,22 @@ fun CountdownScreen(
     // 添加动画状态
     var isAlarmPlaying by remember { mutableStateOf(false) }
     
+    LaunchedEffect(key1 = Unit) {
+        // 在倒计时组件首次加载时触发一次翻转动画
+        delay(300) // 短暂延迟让UI先渲染
+        prevRemainingSeconds = totalSeconds + 1 
+        remainingSeconds = totalSeconds
+    }
+    
     LaunchedEffect(key1 = remainingSeconds) {
-        if (isFirstExecution) {
-            // 首次执行时，只设置标记为false，不执行其他逻辑
-            isFirstExecution = false
-        } else {
-            // 非首次执行时，正常进行倒计时逻辑
-            if (totalSeconds > 0 && remainingSeconds > 0) {
-                delay(1000)
-                prevRemainingSeconds = remainingSeconds
-                remainingSeconds--
-            } else if (totalSeconds > 0 && remainingSeconds <= 0) {
-                isCountdownFinished = true  // 设置为已完成状态
-                
-                // 播放铃声
-                if (isAlarmSoundEnabled) {
-                    isAlarmPlaying = true
-                    ringtonePlayer.playRingtone()
-                }
-                
-                // 添加震动功能
-                if (isVibrationEnabled) {
-                    startVibration(vibrator)
-                }
-                
-                onFinish()
-            }
+        if (totalSeconds > 0 && remainingSeconds > 0) {
+            delay(1000)
+            // 确保每次更新前保存当前值到prev
+            prevRemainingSeconds = remainingSeconds
+            remainingSeconds--
+        } else if (totalSeconds > 0 && remainingSeconds <= 0) {
+            isCountdownFinished = true
+            onFinish()
         }
     }
 
@@ -526,8 +517,7 @@ fun CountdownScreen(
                         prevValue = prevHours,
                         digitSize = digitSize,
                         cardWidth = cardWidth,
-                        cardHeight = cardHeight,
-                        currentBackground = cardBackgrounds[cardBackgroundIndex]
+                        cardHeight = cardHeight
                     )
                     
                     // 分隔符
@@ -546,8 +536,7 @@ fun CountdownScreen(
                     prevValue = prevMinutes,
                     digitSize = digitSize,
                     cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    currentBackground = cardBackgrounds[cardBackgroundIndex]
+                    cardHeight = cardHeight
                 )
                 
                 // 分隔符
@@ -565,8 +554,7 @@ fun CountdownScreen(
                     prevValue = prevSeconds,
                     digitSize = digitSize,
                     cardWidth = cardWidth,
-                    cardHeight = cardHeight,
-                    currentBackground = cardBackgrounds[cardBackgroundIndex]
+                    cardHeight = cardHeight
                 )
             }
         } else {
@@ -614,8 +602,7 @@ private fun FlipTimeUnit(
     prevValue: Int,
     digitSize: androidx.compose.ui.unit.TextUnit,
     cardWidth: androidx.compose.ui.unit.Dp,
-    cardHeight: androidx.compose.ui.unit.Dp,
-    currentBackground: CardBackground
+    cardHeight: androidx.compose.ui.unit.Dp
 ) {
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -627,8 +614,7 @@ private fun FlipTimeUnit(
             prevDigit = prevValue / 10,
             digitSize = digitSize,
             cardWidth = cardWidth,
-            cardHeight = cardHeight,
-            currentBackground = currentBackground
+            cardHeight = cardHeight
         )
         
         Spacer(modifier = Modifier.width(4.dp))
@@ -639,8 +625,7 @@ private fun FlipTimeUnit(
             prevDigit = prevValue % 10,
             digitSize = digitSize,
             cardWidth = cardWidth,
-            cardHeight = cardHeight,
-            currentBackground = currentBackground
+            cardHeight = cardHeight
         )
     }
 }
@@ -651,17 +636,23 @@ private fun FlipDigit(
     prevDigit: Int,
     digitSize: androidx.compose.ui.unit.TextUnit,
     cardWidth: androidx.compose.ui.unit.Dp,
-    cardHeight: androidx.compose.ui.unit.Dp,
-    currentBackground: CardBackground
+    cardHeight: androidx.compose.ui.unit.Dp
 ) {
-    val isFlipping = remember(digit, prevDigit) { digit != prevDigit }
+    // 优化翻转检测逻辑 - 添加首次渲染时的动画效果
+    val initialRender = remember { mutableStateOf(true) }
+    val isFlipping = remember(digit, prevDigit) { 
+        (digit != prevDigit) || initialRender.value 
+    }
     
-    // 使用单一动画值
+    // 强制在数字变化时重置并开始动画
     val animationProgress = remember(digit, prevDigit) { Animatable(0f) }
     
     LaunchedEffect(digit, prevDigit) {
+        // 重置动画开始值
+        animationProgress.snapTo(0f)
+        
         if (isFlipping) {
-            animationProgress.snapTo(0f)
+            initialRender.value = false // 标记初始渲染已完成
             animationProgress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
@@ -686,16 +677,9 @@ private fun FlipDigit(
                 .align(Alignment.TopCenter)
                 .shadow(4.dp, RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
                 .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp)),
-            color = currentBackground.color
+            color = Color.White
         ) {
             Box(contentAlignment = Alignment.Center) {
-                // 如果有纹理，添加纹理层
-                if (currentBackground.hasTexture) {
-                    CardTexture(
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                
                 // 静态上半部分数字
                 if (animationProgress.value < 0.5f) {
                     Text(
@@ -727,16 +711,9 @@ private fun FlipDigit(
                 .align(Alignment.BottomCenter)
                 .shadow(4.dp, RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
                 .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp)),
-            color = currentBackground.color
+            color = Color.White
         ) {
             Box(contentAlignment = Alignment.Center) {
-                // 如果有纹理，添加纹理层
-                if (currentBackground.hasTexture) {
-                    CardTexture(
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                
                 // 静态下半部分数字
                 if (animationProgress.value < 0.5f) {
                     Text(
@@ -763,7 +740,7 @@ private fun FlipDigit(
         // 中间分隔线
         CustomDivider(
             color = Color(0xFFEEEEEE),
-            thickness = 1.dp,
+            thickness = 3.dp,
             modifier = Modifier.align(Alignment.Center)
         )
         
@@ -783,16 +760,9 @@ private fun FlipDigit(
                             rotationX = -topFlipProgress * 90 // 0 -> -90
                             transformOrigin = TransformOrigin(0.5f, 1f)
                         },
-                    color = currentBackground.color
+                    color = Color.White
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        // 如果有纹理，添加纹理层
-                        if (currentBackground.hasTexture) {
-                            CardTexture(
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        
                         Text(
                             text = prevDigit.toString(), 
                             fontSize = digitSize,
@@ -817,16 +787,9 @@ private fun FlipDigit(
                             rotationX = (1 - bottomFlipProgress) * 90 // 90 -> 0
                             transformOrigin = TransformOrigin(0.5f, 0f)
                         },
-                    color = currentBackground.color
+                    color = Color.White
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        // 如果有纹理，添加纹理层
-                        if (currentBackground.hasTexture) {
-                            CardTexture(
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        
                         Text(
                             text = digit.toString(),
                             fontSize = digitSize,
