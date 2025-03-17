@@ -104,10 +104,16 @@ fun CountdownScreen(
         mutableStateOf(serviceCountdownFinished) 
     }
     
+    // 添加一个变量来跟踪是否是首次执行
+    var isFirstExecution by remember { mutableStateOf(true) }
+    
     // 当进入界面时启动服务
     LaunchedEffect(Unit) {
         // 仅当剩余时间大于0时启动服务
         if (totalSeconds > 0) {
+            // 重要：在启动新倒计时前重置完成状态
+            isCountdownFinished = false
+            isFirstExecution = true
             startCountdownService(totalSeconds, isVibrationEnabled, isAlarmSoundEnabled)
         }
     }
@@ -128,9 +134,15 @@ fun CountdownScreen(
         }
     }
     
-    // 检查倒计时时间是否为0
+    // 对totalSeconds变化的监听也需要重置状态
     LaunchedEffect(totalSeconds) {
-        if (totalSeconds <= 0) {
+        if (totalSeconds > 0) {
+            // 重置倒计时完成状态
+            isCountdownFinished = false
+            isFirstExecution = true
+            remainingSeconds = totalSeconds
+            prevRemainingSeconds = totalSeconds
+        } else if (totalSeconds <= 0) {
             showToast = true
             toastMessage = "倒计时时间不能为0，请返回重新设置"
         }
@@ -140,6 +152,8 @@ fun CountdownScreen(
     DisposableEffect(Unit) {
         onDispose {
             stopCountdownService()
+            isCountdownFinished = false
+            isFirstExecution = true
         }
     }
     
@@ -251,25 +265,31 @@ fun CountdownScreen(
     var isAlarmPlaying by remember { mutableStateOf(false) }
     
     LaunchedEffect(key1 = remainingSeconds) {
-        if (totalSeconds > 0 && remainingSeconds > 0) {
-            delay(1000)
-            prevRemainingSeconds = remainingSeconds
-            remainingSeconds--
-        } else if (totalSeconds > 0 && remainingSeconds <= 0) {
-            isCountdownFinished = true  // 设置为已完成状态
-            
-            // 播放铃声
-            if (isAlarmSoundEnabled) {
-                isAlarmPlaying = true
-                ringtonePlayer.playRingtone()
+        if (isFirstExecution) {
+            // 首次执行时，只设置标记为false，不执行其他逻辑
+            isFirstExecution = false
+        } else {
+            // 非首次执行时，正常进行倒计时逻辑
+            if (totalSeconds > 0 && remainingSeconds > 0) {
+                delay(1000)
+                prevRemainingSeconds = remainingSeconds
+                remainingSeconds--
+            } else if (totalSeconds > 0 && remainingSeconds <= 0) {
+                isCountdownFinished = true  // 设置为已完成状态
+                
+                // 播放铃声
+                if (isAlarmSoundEnabled) {
+                    isAlarmPlaying = true
+                    ringtonePlayer.playRingtone()
+                }
+                
+                // 添加震动功能
+                if (isVibrationEnabled) {
+                    startVibration(vibrator)
+                }
+                
+                onFinish()
             }
-            
-            // 添加震动功能
-            if (isVibrationEnabled) {
-                startVibration(vibrator)
-            }
-            
-            onFinish()
         }
     }
 
