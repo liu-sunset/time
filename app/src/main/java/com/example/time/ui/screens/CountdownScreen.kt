@@ -81,11 +81,67 @@ fun CountdownScreen(
     isAlarmSoundEnabled: Boolean = true,
     ringtonePlayer: RingtonePlayer,
     isStyleFixed: Boolean = false,
-    onStyleFixedToggle: (Boolean) -> Unit = {}
+    onStyleFixedToggle: (Boolean) -> Unit = {},
+    startCountdownService: (Long, Boolean, Boolean) -> Unit = { _, _, _ -> },
+    stopCountdownService: () -> Unit = {},
+    serviceRemainingSeconds: Long? = null,
+    serviceCountdownFinished: Boolean = false
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
+    
+    // 使用本地或服务提供的剩余时间
+    var remainingSeconds by remember { 
+        mutableStateOf(serviceRemainingSeconds ?: totalSeconds) 
+    }
+    var prevRemainingSeconds by remember { 
+        mutableStateOf(serviceRemainingSeconds ?: totalSeconds) 
+    }
+    
+    // 使用服务状态或本地状态
+    var isCountdownFinished by remember { 
+        mutableStateOf(serviceCountdownFinished) 
+    }
+    
+    // 当进入界面时启动服务
+    LaunchedEffect(Unit) {
+        // 仅当剩余时间大于0时启动服务
+        if (totalSeconds > 0) {
+            startCountdownService(totalSeconds, isVibrationEnabled, isAlarmSoundEnabled)
+        }
+    }
+    
+    // 监听来自服务的剩余时间更新
+    LaunchedEffect(serviceRemainingSeconds) {
+        serviceRemainingSeconds?.let {
+            prevRemainingSeconds = remainingSeconds
+            remainingSeconds = it
+        }
+    }
+    
+    // 监听来自服务的倒计时完成状态
+    LaunchedEffect(serviceCountdownFinished) {
+        if (serviceCountdownFinished) {
+            isCountdownFinished = true
+            onFinish()
+        }
+    }
+    
+    // 检查倒计时时间是否为0
+    LaunchedEffect(totalSeconds) {
+        if (totalSeconds <= 0) {
+            showToast = true
+            toastMessage = "倒计时时间不能为0，请返回重新设置"
+        }
+    }
+    
+    // 在组件销毁时停止服务
+    DisposableEffect(Unit) {
+        onDispose {
+            stopCountdownService()
+        }
+    }
     
     // 添加渐变背景颜色列表
     val gradientBackgrounds = listOf(
@@ -168,14 +224,6 @@ fun CountdownScreen(
         }
     }
     
-    // 检查倒计时时间是否为0
-    LaunchedEffect(totalSeconds) {
-        if (totalSeconds <= 0) {
-            showToast = true
-            toastMessage = "倒计时时间不能为0，请返回重新设置"
-        }
-    }
-    
     // 添加常亮功能
     DisposableEffect(isKeepScreenOn) {
         // 获取Activity和Window
@@ -200,21 +248,6 @@ fun CountdownScreen(
     }
     
     // 添加动画状态
-    var isCountdownFinished by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(key1 = Unit) {
-        // 修改为使用 from 方法获取 WindowInsetsControllerCompat 实例
-        val activity = view.context as android.app.Activity
-        val controller = WindowInsetsControllerCompat(activity.window, view)
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-    }
-    
-    // 只有当时间大于0时才开始倒计时
-    var remainingSeconds by remember { mutableStateOf(totalSeconds) }
-    var prevRemainingSeconds by remember { mutableStateOf(totalSeconds) }
-    
-    // 添加铃声状态管理
     var isAlarmPlaying by remember { mutableStateOf(false) }
     
     LaunchedEffect(key1 = remainingSeconds) {

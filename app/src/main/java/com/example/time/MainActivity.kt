@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import android.os.Vibrator
 import android.os.VibrationEffect
 import android.os.Build
+import android.os.IBinder
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,13 +28,39 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import com.example.time.utils.RingtonePlayer
 import com.example.time.utils.rememberRingtonePlayer
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.content.Intent
+import androidx.compose.runtime.collectAsState
+import com.example.time.services.CountdownService
 
 class MainActivity : ComponentActivity() {
     private lateinit var vibrator: Vibrator
+    private var countdownService: CountdownService? = null
+    private var isBound = false
+
+    // 服务连接
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(componentName: ComponentName, iBinder: IBinder) {
+            val binder = iBinder as CountdownService.CountdownBinder
+            countdownService = binder.getService()
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(componentName: ComponentName) {
+            countdownService = null
+            isBound = false
+        }
+    }
 
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 绑定服务
+        Intent(this, CountdownService::class.java).also { intent ->
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
         
         // 优化1: 启用边缘到边缘显示，提前完成窗口设置
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -118,20 +145,20 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onBack = {
                                         isCountdownStarted = false
-                                        // 返回时停止震动
-                                        stopVibration(vibrator)
-                                        // 返回时停止铃声
-                                        ringtonePlayer.stopRingtone()
+                                        // 返回时停止服务
+                                        stopCountdownService()
                                     },
                                     isVibrationEnabled = isVibrationEnabled,
                                     onVibrationToggle = { enabled ->
                                         isVibrationEnabled = enabled
-                                        if (!enabled) {
-                                            // 关闭震动时停止震动
-                                            stopVibration(vibrator)
+                                        // 更新服务中的振动设置
+                                        val intent = Intent(this@MainActivity, CountdownService::class.java).apply {
+                                            action = CountdownService.ACTION_UPDATE_SETTINGS
+                                            putExtra(CountdownService.EXTRA_VIBRATION_ENABLED, enabled)
                                         }
+                                        startService(intent)
                                     },
-                                    vibrator = vibrator, // 传递vibrator实例
+                                    vibrator = vibrator,
                                     isKeepScreenOn = isKeepScreenOn,
                                     onKeepScreenOnToggle = { enabled ->
                                         isKeepScreenOn = enabled
@@ -145,7 +172,15 @@ class MainActivity : ComponentActivity() {
                                     isStyleFixed = isStyleFixed,
                                     onStyleFixedToggle = { enabled ->
                                         isStyleFixed = enabled
-                                    }
+                                    },
+                                    startCountdownService = { seconds, vibrationEnabled, alarmEnabled ->
+                                        startCountdownService(seconds, vibrationEnabled, alarmEnabled)
+                                    },
+                                    stopCountdownService = {
+                                        stopCountdownService()
+                                    },
+                                    serviceRemainingSeconds = if (isBound) countdownService?.remainingSeconds?.collectAsState()?.value else null,
+                                    serviceCountdownFinished = if (isBound) countdownService?.isCountdownFinished?.collectAsState()?.value == true else false
                                 )
                             }
                         }
@@ -153,6 +188,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        // 解绑服务
+        if (isBound) {
+            unbindService(serviceConnection)
+            isBound = false
+        }
+        super.onDestroy()
     }
 
     // 停止震动的辅助函数
@@ -163,5 +207,29 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             vibrator.cancel()
         }
+    }
+
+    // 启动倒计时服务的辅助方法
+    private fun startCountdownService(seconds: Long, isVibrationEnabled: Boolean, isAlarmEnabled: Boolean) {
+        val intent = Intent(this, CountdownService::class.java).apply {
+            action = CountdownService.ACTION_START_COUNTDOWN
+            putExtra(CountdownService.EXTRA_COUNTDOWN_SECONDS, seconds)
+            putExtra(CountdownService.EXTRA_VIBRATION_ENABLED, isVibrationEnabled)
+            putExtra(CountdownService.EXTRA_ALARM_ENABLED, isAlarmEnabled)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    // 停止倒计时服务的辅助方法
+    private fun stopCountdownService() {
+        val intent = Intent(this, CountdownService::class.java).apply {
+            action = CountdownService.ACTION_STOP_COUNTDOWN
+        }
+        startService(intent)
     }
 }
