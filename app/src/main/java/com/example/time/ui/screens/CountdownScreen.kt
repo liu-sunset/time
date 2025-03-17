@@ -737,11 +737,14 @@ private fun FlipDigit(
             }
         }
         
-        // 中间分隔线
-        CustomDivider(
-            color = Color(0xFFEEEEEE),
-            thickness = 3.dp,
-            modifier = Modifier.align(Alignment.Center)
+        // 中间分隔线 - 使用固定位置和zIndex确保不会被动画影响
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(Color(0xFFEEEEEE))
+                .align(Alignment.Center)
+                .zIndex(2f) // 确保分隔线始终在最上层
         )
         
         // 翻转动画 - 使用单独的层
