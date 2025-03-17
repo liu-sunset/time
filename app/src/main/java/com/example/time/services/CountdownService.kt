@@ -9,6 +9,8 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.os.PowerManager.WakeLock
 import android.os.Vibrator
 import android.os.VibrationEffect
 import androidx.core.app.NotificationCompat
@@ -43,10 +45,23 @@ class CountdownService : Service() {
     private val _isCountdownFinished = MutableStateFlow(false)
     val isCountdownFinished: StateFlow<Boolean> = _isCountdownFinished
     
+    // 添加WakeLock变量
+    private lateinit var wakeLock: WakeLock
+    
+    // 在已有变量之后添加
+    private var isWakeLockHeld = false
+    
     override fun onCreate() {
         super.onCreate()
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         ringtonePlayer = RingtonePlayer(this)
+        
+        // 初始化WakeLock
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "CountdownService::WakeLock"
+        )
         
         // 创建通知渠道
         createNotificationChannel()
@@ -85,6 +100,16 @@ class CountdownService : Service() {
     }
     
     override fun onDestroy() {
+        // 确保释放WakeLock
+        if (isWakeLockHeld && wakeLock.isHeld) {
+            try {
+                wakeLock.release()
+                isWakeLockHeld = false
+            } catch (e: Exception) {
+                // 处理异常
+            }
+        }
+        
         stopCountdown()
         super.onDestroy()
     }
@@ -94,6 +119,12 @@ class CountdownService : Service() {
         isVibrationEnabled = vibrationEnabled
         isAlarmSoundEnabled = alarmEnabled
         _remainingSeconds.value = seconds
+        
+        // 获取并持有WakeLock，确保在锁屏时CPU继续运行
+        if (!isWakeLockHeld && seconds > 0) {
+            wakeLock.acquire(seconds * 1000 + 60000) // 倒计时时间 + 额外1分钟
+            isWakeLockHeld = true
+        }
         
         // 启动为前台服务
         startForeground(NOTIFICATION_ID, createNotification())
@@ -129,6 +160,19 @@ class CountdownService : Service() {
         countdownJob?.cancel()
         stopVibration()
         ringtonePlayer.stopRingtone()
+        
+        // 释放WakeLock
+        if (isWakeLockHeld) {
+            try {
+                if (wakeLock.isHeld) {
+                    wakeLock.release()
+                }
+                isWakeLockHeld = false
+            } catch (e: Exception) {
+                // 处理可能的异常
+            }
+        }
+        
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
     

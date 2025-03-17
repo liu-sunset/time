@@ -117,21 +117,20 @@ fun CountdownScreen(
         }
     }
     
-    // 监听来自服务的剩余时间更新
+    // 添加新的LaunchedEffect来同步UI和服务状态
     LaunchedEffect(serviceRemainingSeconds) {
-        serviceRemainingSeconds?.let {
-            if (it != remainingSeconds) {  // 只在值变化时更新
+        if (serviceRemainingSeconds != null) {
+            // 只在值有变化时更新prev值，避免不必要的动画
+            if (serviceRemainingSeconds != remainingSeconds) {
                 prevRemainingSeconds = remainingSeconds
-                remainingSeconds = it
+                remainingSeconds = serviceRemainingSeconds
             }
-        }
-    }
-    
-    // 监听来自服务的倒计时完成状态
-    LaunchedEffect(serviceCountdownFinished) {
-        if (serviceCountdownFinished) {
-            isCountdownFinished = true
-            onFinish()
+            
+            // 如果服务倒计时结束
+            if (serviceRemainingSeconds <= 0 && totalSeconds > 0) {
+                isCountdownFinished = true
+                onFinish()
+            }
         }
     }
     
@@ -270,18 +269,6 @@ fun CountdownScreen(
         delay(300) // 短暂延迟让UI先渲染
         prevRemainingSeconds = totalSeconds + 1 
         remainingSeconds = totalSeconds
-    }
-    
-    LaunchedEffect(key1 = remainingSeconds) {
-        if (totalSeconds > 0 && remainingSeconds > 0) {
-            delay(1000)
-            // 确保每次更新前保存当前值到prev
-            prevRemainingSeconds = remainingSeconds
-            remainingSeconds--
-        } else if (totalSeconds > 0 && remainingSeconds <= 0) {
-            isCountdownFinished = true
-            onFinish()
-        }
     }
 
     // 在组件销毁时停止铃声
