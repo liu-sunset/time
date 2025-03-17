@@ -25,6 +25,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import com.example.time.utils.RingtonePlayer
+import com.example.time.utils.rememberRingtonePlayer
 
 class MainActivity : ComponentActivity() {
     private lateinit var vibrator: Vibrator
@@ -62,6 +64,13 @@ class MainActivity : ComponentActivity() {
                     var isVibrationEnabled by remember { mutableStateOf(false) }
                     var isKeepScreenOn by remember { mutableStateOf(false) }
                     var isDarkMode by remember { mutableStateOf(false) }
+                    var isStyleFixed by remember { mutableStateOf(false) }
+                    
+                    // 创建铃声播放器
+                    val ringtonePlayer = rememberRingtonePlayer()
+                    
+                    // 可以添加一个铃声开关状态
+                    var isAlarmSoundEnabled by remember { mutableStateOf(true) }
                     
                     // 优化7: 屏幕方向变更使用LaunchedEffect而不是每次重组都执行
                     LaunchedEffect(isCountdownStarted) {
@@ -111,6 +120,8 @@ class MainActivity : ComponentActivity() {
                                         isCountdownStarted = false
                                         // 返回时停止震动
                                         stopVibration(vibrator)
+                                        // 返回时停止铃声
+                                        ringtonePlayer.stopRingtone()
                                     },
                                     isVibrationEnabled = isVibrationEnabled,
                                     onVibrationToggle = { enabled ->
@@ -128,6 +139,12 @@ class MainActivity : ComponentActivity() {
                                     isDarkMode = isDarkMode,
                                     onDarkModeToggle = { enabled ->
                                         isDarkMode = enabled
+                                    },
+                                    isAlarmSoundEnabled = isAlarmSoundEnabled,
+                                    ringtonePlayer = ringtonePlayer,
+                                    isStyleFixed = isStyleFixed,
+                                    onStyleFixedToggle = { enabled ->
+                                        isStyleFixed = enabled
                                     }
                                 )
                             }

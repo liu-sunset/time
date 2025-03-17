@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Lock
 
 // 添加一个自定义的缓动函数用于更平滑的滑动效果
 val EaseOutQuart = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
@@ -69,7 +70,9 @@ fun AnimatedToolMenu(
     isKeepScreenOn: Boolean,
     onKeepScreenOnToggle: (Boolean) -> Unit,
     isDarkMode: Boolean,
-    onDarkModeToggle: (Boolean) -> Unit = {},
+    onDarkModeToggle: (Boolean) -> Unit,
+    isStyleFixed: Boolean = false,
+    onStyleFixedToggle: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 创建包含图标、标题、状态和回调的菜单项数据
@@ -94,6 +97,14 @@ fun AnimatedToolMenu(
             statusText = if (isDarkMode) "已开启" else "已关闭",
             isEnabled = isDarkMode,
             onClick = { onDarkModeToggle(!isDarkMode) }
+        ),
+        // 添加"固定样式"按钮到菜单项列表中
+        MenuItemData(
+            icon = Icons.Filled.Lock, // 使用锁定图标
+            title = "固定样式",
+            statusText = if (isStyleFixed) "已开启" else "已关闭",
+            isEnabled = isStyleFixed,
+            onClick = { onStyleFixedToggle(!isStyleFixed) }
         )
     )
     
@@ -271,4 +282,42 @@ private data class MenuItemData(
     val statusText: String,
     val isEnabled: Boolean,
     val onClick: () -> Unit
-) 
+)
+
+@Composable
+private fun MenuItemWithSwitch(
+    title: String,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    isDarkMode: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = if (isDarkMode) Color.White else Color.Black
+            )
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = { onClick() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = if (isDarkMode) Color(0xFF81C784) else Color(0xFF4CAF50),
+                    checkedTrackColor = if (isDarkMode) Color(0xFF4CAF50).copy(alpha = 0.5f) else Color(0xFF81C784).copy(alpha = 0.5f),
+                    uncheckedThumbColor = if (isDarkMode) Color.DarkGray else Color.LightGray,
+                    uncheckedTrackColor = if (isDarkMode) Color.Gray.copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.2f)
+                )
+            )
+        }
+    }
+} 

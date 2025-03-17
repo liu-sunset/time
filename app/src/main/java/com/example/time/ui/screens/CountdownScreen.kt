@@ -46,6 +46,25 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.zIndex
+import com.example.time.utils.RingtonePlayer
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.delay
+import kotlin.random.Random
+
+// 添加背景渐变色数据类
+private data class GradientBackgroundColor(
+    val name: String,
+    val colors: List<Color>
+)
+
+// 添加卡片背景数据类
+private data class CardBackground(
+    val name: String,
+    val color: Color,
+    val hasTexture: Boolean = false
+)
 
 @Composable
 fun CountdownScreen(
@@ -58,11 +77,96 @@ fun CountdownScreen(
     isKeepScreenOn: Boolean = false,
     onKeepScreenOnToggle: (Boolean) -> Unit = {},
     isDarkMode: Boolean,
-    onDarkModeToggle: (Boolean) -> Unit = {}
+    onDarkModeToggle: (Boolean) -> Unit = {},
+    isAlarmSoundEnabled: Boolean = true,
+    ringtonePlayer: RingtonePlayer,
+    isStyleFixed: Boolean = false,
+    onStyleFixedToggle: (Boolean) -> Unit = {}
 ) {
     val view = LocalView.current
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
+    
+    // 添加渐变背景颜色列表
+    val gradientBackgrounds = listOf(
+        GradientBackgroundColor(
+            name = "晨雾森林",
+            colors = listOf(Color(0xFFE6F4EA), Color(0xFFB8DFD8), Color(0xFF88C9B5))
+        ),
+        GradientBackgroundColor(
+            name = "黄昏沙丘",
+            colors = listOf(Color(0xFFFFEED9), Color(0xFFFDD2B5), Color(0xFFF7A88F))
+        ),
+        GradientBackgroundColor(
+            name = "冰川呼吸",
+            colors = listOf(Color(0xFFF0F5FF), Color(0xFFD6E4FF), Color(0xFFADC6FF))
+        ),
+        // 新增渐变背景色
+        GradientBackgroundColor(
+            name = "苔原迷雾",
+            colors = listOf(Color(0xFFE0EBF5), Color(0xFFB7C9D6), Color(0xFF8FA6B7))
+        ),
+        GradientBackgroundColor(
+            name = "宣纸渐变",
+            colors = listOf(Color(0xFFF8F6F2), Color(0xFFE5E0D6), Color(0xFFD3CCC3))
+        ),
+        GradientBackgroundColor(
+            name = "石墨波纹",
+            colors = listOf(Color(0xFF404040), Color(0xFF606060), Color(0xFF808080))
+        )
+    )
+    
+    // 单色背景颜色列表（保留原有的）
+    val solidBackgroundColors = listOf(
+        Color.White,                    // 白色
+        Color(0xFF6C8EB2),              // 雾霭蓝 RGB(108,142,178)
+        Color(0xFFB4A6D5),              // 晨雾紫 RGB(180,166,213)
+        Color(0xFFB76E79),              // 陶土红 RGB(183,110,121)
+        Color(0xFFE9E1D6),              // 亚麻米 RGB(233,225,214)
+        Color(0xFF71847D)               // 板岩绿 RGB(113,132,125)
+    )
+    
+    // 背景索引和类型状态 - 确保初始背景为白色
+    var colorIndex by remember { mutableStateOf(0) } // 索引0对应白色
+    var useGradient by remember { mutableStateOf(false) } // 初始使用纯色背景
+    var isFirstBackground by remember { mutableStateOf(true) } // 跟踪是否是第一次显示背景
+    
+    // 在两种背景系列之间随机切换，但确保第一次显示为白色
+    LaunchedEffect(isDarkMode, isStyleFixed) {
+        // 首次延迟较长时间，确保用户能看到白色背景
+        if (isFirstBackground) {
+            delay(10000) // 首次10秒后再切换
+            isFirstBackground = false
+        }
+        
+        while (true) {
+            delay(1000*60*15) // 修改为5分钟切换一次
+            if (!isDarkMode && !isStyleFixed) { // 只有在非暗黑模式且未固定样式时才切换
+                // 获取当前颜色索引和类型
+                val currentColorIndex = colorIndex
+                val currentUseGradient = useGradient
+                
+                // 随机决定是否切换背景类型（渐变或纯色）
+                val randomUseGradient = Random.nextBoolean()
+                useGradient = randomUseGradient
+                
+                // 随机选择新的颜色索引，确保不与当前相同
+                val maxIndex = if (randomUseGradient) 
+                    gradientBackgrounds.size - 1 
+                else 
+                    solidBackgroundColors.size - 1
+                    
+                // 随机获取一个不同于当前索引的新索引
+                var newIndex: Int
+                do {
+                    newIndex = Random.nextInt(0, maxIndex + 1)
+                } while (newIndex == currentColorIndex && 
+                         randomUseGradient == currentUseGradient)
+                
+                colorIndex = newIndex
+            }
+        }
+    }
     
     // 检查倒计时时间是否为0
     LaunchedEffect(totalSeconds) {
@@ -110,6 +214,9 @@ fun CountdownScreen(
     var remainingSeconds by remember { mutableStateOf(totalSeconds) }
     var prevRemainingSeconds by remember { mutableStateOf(totalSeconds) }
     
+    // 添加铃声状态管理
+    var isAlarmPlaying by remember { mutableStateOf(false) }
+    
     LaunchedEffect(key1 = remainingSeconds) {
         if (totalSeconds > 0 && remainingSeconds > 0) {
             delay(1000)
@@ -117,7 +224,32 @@ fun CountdownScreen(
             remainingSeconds--
         } else if (totalSeconds > 0 && remainingSeconds <= 0) {
             isCountdownFinished = true  // 设置为已完成状态
+            
+            // 播放铃声
+            if (isAlarmSoundEnabled) {
+                isAlarmPlaying = true
+                ringtonePlayer.playRingtone()
+            }
+            
+            // 添加震动功能
+            if (isVibrationEnabled) {
+                startVibration(vibrator)
+            }
+            
             onFinish()
+        }
+    }
+
+    // 在组件销毁时停止铃声
+    DisposableEffect(Unit) {
+        onDispose {
+            if (isAlarmPlaying) {
+                ringtonePlayer.stopRingtone()
+            }
+            // 确保组件销毁时停止震动
+            if (isVibrationEnabled) {
+                stopVibration(vibrator)
+            }
         }
     }
 
@@ -151,11 +283,52 @@ fun CountdownScreen(
     // 添加工具菜单状态
     var isToolMenuExpanded by remember { mutableStateOf(false) }
     
+    // 添加卡片背景集合
+    val cardBackgrounds = remember {
+        listOf(
+            CardBackground("白色", Color.White),
+            CardBackground("淡黄纹理", Color(0xFFF7E9C3), true),
+            CardBackground("浅蓝", Color(0xFFE6F4FA)),
+            CardBackground("薄荷绿", Color(0xFFE0F2F1)),
+            CardBackground("灰白", Color(0xFFF5F5F5)),
+            CardBackground("米色", Color(0xFFF5F1E8))
+        )
+    }
+    
+    // 添加卡片背景索引状态
+    var cardBackgroundIndex by remember { mutableStateOf(0) } // 初始为白色
+    
+    // 定期切换卡片背景色 (20分钟)
+    LaunchedEffect(Unit, isStyleFixed) {
+        // 首次等待较长时间，确保用户能看到白色背景
+        delay(1000*60*20) // 20分钟
+        
+        while(true) {
+            if (!isStyleFixed) { // 只有在未固定样式时才切换卡片背景
+                // 切换到下一个背景
+                cardBackgroundIndex = (cardBackgroundIndex + 1) % cardBackgrounds.size
+            }
+            delay(1000*60*20) // 20分钟切换一次
+        }
+    }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                if (isDarkMode) Color(0xFF212121) else Color(0xFFFAFAFA),
+                brush = if (!isDarkMode && useGradient) {
+                    // 使用渐变背景
+                    val currentGradient = gradientBackgrounds[colorIndex]
+                    Brush.verticalGradient(colors = currentGradient.colors)
+                } else {
+                    // 使用单色背景或暗色模式
+                    val color = if (isDarkMode) {
+                        Color(0xFF212121) // 暗黑模式保持原来的颜色
+                    } else {
+                        solidBackgroundColors[colorIndex]
+                    }
+                    Brush.verticalGradient(colors = listOf(color, color))
+                },
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
             )
     ) {
@@ -175,7 +348,13 @@ fun CountdownScreen(
                     ),
                 shape = RoundedCornerShape(20.dp),
                 color = if (isDarkMode) Color(0xFF212121) else Color(0xFFE0E0E0),
-                onClick = onBack
+                onClick = {
+                    if (isAlarmPlaying) {
+                        ringtonePlayer.stopRingtone()
+                        isAlarmPlaying = false
+                    }
+                    onBack()
+                }
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -265,6 +444,8 @@ fun CountdownScreen(
             onKeepScreenOnToggle = onKeepScreenOnToggle,
             isDarkMode = isDarkMode,
             onDarkModeToggle = onDarkModeToggle,
+            isStyleFixed = isStyleFixed,
+            onStyleFixedToggle = onStyleFixedToggle,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 64.dp, end = 16.dp)
@@ -292,7 +473,8 @@ fun CountdownScreen(
                         prevValue = prevHours,
                         digitSize = digitSize,
                         cardWidth = cardWidth,
-                        cardHeight = cardHeight
+                        cardHeight = cardHeight,
+                        currentBackground = cardBackgrounds[cardBackgroundIndex]
                     )
                     
                     // 分隔符
@@ -311,7 +493,8 @@ fun CountdownScreen(
                     prevValue = prevMinutes,
                     digitSize = digitSize,
                     cardWidth = cardWidth,
-                    cardHeight = cardHeight
+                    cardHeight = cardHeight,
+                    currentBackground = cardBackgrounds[cardBackgroundIndex]
                 )
                 
                 // 分隔符
@@ -329,7 +512,8 @@ fun CountdownScreen(
                     prevValue = prevSeconds,
                     digitSize = digitSize,
                     cardWidth = cardWidth,
-                    cardHeight = cardHeight
+                    cardHeight = cardHeight,
+                    currentBackground = cardBackgrounds[cardBackgroundIndex]
                 )
             }
         } else {
@@ -372,12 +556,13 @@ fun CountdownScreen(
 }
 
 @Composable
-fun FlipTimeUnit(
+private fun FlipTimeUnit(
     value: Int,
     prevValue: Int,
     digitSize: androidx.compose.ui.unit.TextUnit,
     cardWidth: androidx.compose.ui.unit.Dp,
-    cardHeight: androidx.compose.ui.unit.Dp
+    cardHeight: androidx.compose.ui.unit.Dp,
+    currentBackground: CardBackground
 ) {
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -389,7 +574,8 @@ fun FlipTimeUnit(
             prevDigit = prevValue / 10,
             digitSize = digitSize,
             cardWidth = cardWidth,
-            cardHeight = cardHeight
+            cardHeight = cardHeight,
+            currentBackground = currentBackground
         )
         
         Spacer(modifier = Modifier.width(4.dp))
@@ -400,95 +586,76 @@ fun FlipTimeUnit(
             prevDigit = prevValue % 10,
             digitSize = digitSize,
             cardWidth = cardWidth,
-            cardHeight = cardHeight
+            cardHeight = cardHeight,
+            currentBackground = currentBackground
         )
     }
 }
 
 @Composable
-fun FlipDigit(
+private fun FlipDigit(
     digit: Int,
     prevDigit: Int,
     digitSize: androidx.compose.ui.unit.TextUnit,
     cardWidth: androidx.compose.ui.unit.Dp,
-    cardHeight: androidx.compose.ui.unit.Dp
+    cardHeight: androidx.compose.ui.unit.Dp,
+    currentBackground: CardBackground
 ) {
-    // 检测数字是否变化
     val isFlipping = remember(digit, prevDigit) { digit != prevDigit }
     
-    // 动画进度 - 使用更高的初始值避免从零开始的卡顿
-    val flipRotation = remember { Animatable(0f) }
+    // 使用单一动画值
+    val animationProgress = remember(digit, prevDigit) { Animatable(0f) }
     
-    // 当数字变化时启动动画 - 优化动画速度和曲线
     LaunchedEffect(digit, prevDigit) {
         if (isFlipping) {
-            flipRotation.snapTo(0f)
-            flipRotation.animateTo(
-                targetValue = 180f,
+            animationProgress.snapTo(0f)
+            animationProgress.animateTo(
+                targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 300,  // 减少动画时间从400ms到300ms
-                    easing = LinearOutSlowInEasing  // 使用更流畅的缓动函数
+                    durationMillis = 400,
+                    easing = FastOutSlowInEasing
                 )
             )
         }
     }
     
-    // 翻页数字容器
+    // 使用单一卡片，通过Clip和动画值来控制显示
     Box(
         modifier = Modifier
             .width(cardWidth)
             .height(cardHeight)
     ) {
-        // 上半部分（静态）- 减少不必要的图层变换
+        // 上半部分背景卡片
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(cardHeight / 2)
                 .align(Alignment.TopCenter)
-                .shadow(
-                    elevation = if (isFlipping && flipRotation.value in 1f..179f) 6.dp else 3.dp,  // 减小阴影
-                    shape = RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp),
-                    clip = true
-                )
+                .shadow(4.dp, RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
                 .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp)),
-            color = Color.White
+            color = currentBackground.color
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = if (flipRotation.value > 90f) digit.toString() else prevDigit.toString(),
-                    fontSize = digitSize,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.offset(y = cardHeight / 4)
-                )
-            }
-        }
-        
-        // 翻转的上半部分（动画中）- 优化变换属性
-        if (isFlipping) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(cardHeight / 2)
-                    .align(Alignment.TopCenter)
-                    .shadow(
-                        elevation = 6.dp,  // 固定阴影深度，减少动态计算
-                        shape = RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp),
-                        clip = true
+            Box(contentAlignment = Alignment.Center) {
+                // 如果有纹理，添加纹理层
+                if (currentBackground.hasTexture) {
+                    CardTexture(
+                        modifier = Modifier.fillMaxSize()
                     )
-                    .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
-                    .graphicsLayer {
-                        // 优化3D变换计算
-                        rotationX = if (flipRotation.value <= 90f) -flipRotation.value else -180f
-                        cameraDistance = 12f * density  // 增加相机距离使动画更平滑
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1.0f)
-                    },
-                color = Color.White
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                }
+                
+                // 静态上半部分数字
+                if (animationProgress.value < 0.5f) {
                     Text(
                         text = prevDigit.toString(),
+                        fontSize = digitSize,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.offset(y = cardHeight / 4)
+                    )
+                } else {
+                    Text(
+                        text = digit.toString(),
                         fontSize = digitSize,
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
@@ -499,53 +666,35 @@ fun FlipDigit(
             }
         }
         
-        // 下半部分（静态）- 简化属性
+        // 下半部分背景卡片
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(cardHeight / 2)
                 .align(Alignment.BottomCenter)
-                .shadow(
-                    elevation = if (isFlipping && flipRotation.value in 1f..179f) 6.dp else 3.dp,  // 减小阴影
-                    shape = RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp),
-                    clip = true
-                )
+                .shadow(4.dp, RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
                 .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp)),
-            color = Color.White
+            color = currentBackground.color
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = if (flipRotation.value > 90f) digit.toString() else prevDigit.toString(),
-                    fontSize = digitSize,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.offset(y = -cardHeight / 4)
-                )
-            }
-        }
-        
-        // 翻转的下半部分（只在必要时显示）
-        if (isFlipping && flipRotation.value > 90f) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(cardHeight / 2)
-                    .align(Alignment.BottomCenter)
-                    .shadow(
-                        elevation = 6.dp,  // 固定阴影深度
-                        shape = RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp),
-                        clip = true
+            Box(contentAlignment = Alignment.Center) {
+                // 如果有纹理，添加纹理层
+                if (currentBackground.hasTexture) {
+                    CardTexture(
+                        modifier = Modifier.fillMaxSize()
                     )
-                    .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
-                    .graphicsLayer {
-                        rotationX = 180f - flipRotation.value
-                        cameraDistance = 12f * density  // 增加相机距离
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.0f)
-                    },
-                color = Color.White
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                }
+                
+                // 静态下半部分数字
+                if (animationProgress.value < 0.5f) {
+                    Text(
+                        text = prevDigit.toString(),
+                        fontSize = digitSize,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.offset(y = -cardHeight / 4)
+                    )
+                } else {
                     Text(
                         text = digit.toString(),
                         fontSize = digitSize,
@@ -564,6 +713,79 @@ fun FlipDigit(
             thickness = 1.dp,
             modifier = Modifier.align(Alignment.Center)
         )
+        
+        // 翻转动画 - 使用单独的层
+        if (isFlipping) {
+            // 上半部分翻转 (0 -> 0.5)
+            if (animationProgress.value < 0.5f) {
+                val topFlipProgress = animationProgress.value * 2 // 0->1
+                
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardHeight / 2)
+                        .align(Alignment.TopCenter)
+                        .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
+                        .graphicsLayer {
+                            rotationX = -topFlipProgress * 90 // 0 -> -90
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        },
+                    color = currentBackground.color
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        // 如果有纹理，添加纹理层
+                        if (currentBackground.hasTexture) {
+                            CardTexture(
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                        Text(
+                            text = prevDigit.toString(), 
+                            fontSize = digitSize,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.offset(y = cardHeight / 4)
+                        )
+                    }
+                }
+            } else {
+                // 下半部分翻转 (0.5 -> 1.0)
+                val bottomFlipProgress = (animationProgress.value - 0.5f) * 2 // 0->1
+                
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(cardHeight / 2)
+                        .align(Alignment.BottomCenter)
+                        .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
+                        .graphicsLayer {
+                            rotationX = (1 - bottomFlipProgress) * 90 // 90 -> 0
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                        },
+                    color = currentBackground.color
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        // 如果有纹理，添加纹理层
+                        if (currentBackground.hasTexture) {
+                            CardTexture(
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                        Text(
+                            text = digit.toString(),
+                            fontSize = digitSize,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.offset(y = -cardHeight / 4)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -584,3 +806,75 @@ private data class TimeDisplayValues(
     val hasHours: Boolean, val digitSize: TextUnit, 
     val cardWidth: Dp, val cardHeight: Dp
 )
+
+private fun startVibration(vibrator: Vibrator) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 1000), 0))
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(longArrayOf(0, 1000, 1000), 0)
+    }
+}
+
+private fun stopVibration(vibrator: Vibrator) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.cancel()
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.cancel()
+    }
+}
+
+// 创建纹理组件
+@Composable
+fun CardTexture(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        // 设置纹理绘制参数
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val lineSpacing = 5.dp.toPx()
+        val lineThickness = 0.5.dp.toPx()
+        
+        // 绘制水平线纹理
+        val paint = Paint().apply {
+            color = Color(0x15000000) // 半透明黑色
+            strokeWidth = lineThickness
+            style = PaintingStyle.Stroke
+        }
+        
+        // 水平线
+        for (y in 0..canvasHeight.toInt() step lineSpacing.toInt()) {
+            drawLine(
+                color = Color(0x15000000),
+                start = Offset(0f, y.toFloat()),
+                end = Offset(canvasWidth, y.toFloat()),
+                strokeWidth = lineThickness
+            )
+        }
+        
+        // 垂直线 - 较淡
+        for (x in 0..canvasWidth.toInt() step lineSpacing.toInt()) {
+            drawLine(
+                color = Color(0x10000000),
+                start = Offset(x.toFloat(), 0f),
+                end = Offset(x.toFloat(), canvasHeight),
+                strokeWidth = lineThickness
+            )
+        }
+        
+        // 添加随机的噪点效果
+        val random = kotlin.random.Random
+        val dotsCount = (canvasWidth * canvasHeight / 1000).toInt()
+        val dotSize = 1.dp.toPx()
+        
+        repeat(dotsCount) {
+            val x = random.nextFloat() * canvasWidth
+            val y = random.nextFloat() * canvasHeight
+            drawCircle(
+                color = Color(0x0A000000),
+                radius = dotSize / 2,
+                center = Offset(x, y)
+            )
+        }
+    }
+}
