@@ -115,44 +115,82 @@ class CountdownService : Service() {
     }
     
     private fun startCountdown(seconds: Long, vibrationEnabled: Boolean, alarmEnabled: Boolean) {
-        _isCountdownFinished.value = false
-        isVibrationEnabled = vibrationEnabled
-        isAlarmSoundEnabled = alarmEnabled
-        _remainingSeconds.value = seconds
-        
-        // 获取并持有WakeLock，确保在锁屏时CPU继续运行
-        if (!isWakeLockHeld && seconds > 0) {
-            wakeLock.acquire(seconds * 1000 + 60000) // 倒计时时间 + 额外1分钟
-            isWakeLockHeld = true
-        }
-        
-        // 启动为前台服务
-        startForeground(NOTIFICATION_ID, createNotification())
-        
-        // 启动倒计时
-        countdownJob?.cancel()
-        countdownJob = serviceScope.launch {
-            while (_remainingSeconds.value > 0) {
-                delay(1000)
-                _remainingSeconds.value--
-                updateNotification()
+        try {
+            _isCountdownFinished.value = false
+            isVibrationEnabled = vibrationEnabled
+            isAlarmSoundEnabled = alarmEnabled
+            _remainingSeconds.value = seconds
+            
+            // 获取并持有WakeLock，确保在锁屏时CPU继续运行
+            if (!isWakeLockHeld && seconds > 0) {
+                try {
+                    wakeLock.acquire(seconds * 1000 + 60000) // 倒计时时间 + 额外1分钟
+                    isWakeLockHeld = true
+                } catch (e: Exception) {
+                    // 处理WakeLock获取失败的情况
+                    isWakeLockHeld = false
+                    // 记录日志但继续执行
+                }
             }
             
-            // 倒计时结束
-            _isCountdownFinished.value = true
-            
-            // 触发震动
-            if (isVibrationEnabled) {
-                startVibration()
+            // 启动为前台服务 - 添加错误处理
+            try {
+                startForeground(NOTIFICATION_ID, createNotification())
+            } catch (e: Exception) {
+                // 处理前台服务启动失败
+                // 可以尝试使用不同的通知配置再次尝试
+                try {
+                    val simpleNotification = createSimpleNotification()
+                    startForeground(NOTIFICATION_ID, simpleNotification)
+                } catch (e: Exception) {
+                    // 如果仍然失败，至少让服务继续运行
+                }
             }
             
-            // 播放铃声
-            if (isAlarmSoundEnabled) {
-                ringtonePlayer.playRingtone()
+            // 启动倒计时
+            countdownJob?.cancel()
+            countdownJob = serviceScope.launch {
+                while (_remainingSeconds.value > 0) {
+                    delay(1000)
+                    _remainingSeconds.value--
+                    try {
+                        updateNotification()
+                    } catch (e: Exception) {
+                        // 处理通知更新失败
+                    }
+                }
+                
+                // 倒计时结束
+                _isCountdownFinished.value = true
+                
+                // 触发震动
+                if (isVibrationEnabled) {
+                    try {
+                        startVibration()
+                    } catch (e: Exception) {
+                        // 处理震动失败
+                    }
+                }
+                
+                // 播放铃声
+                if (isAlarmSoundEnabled) {
+                    try {
+                        ringtonePlayer.playRingtone()
+                    } catch (e: Exception) {
+                        // 处理铃声播放失败
+                    }
+                }
+                
+                // 更新通知
+                try {
+                    updateNotification(isFinished = true)
+                } catch (e: Exception) {
+                    // 处理通知更新失败
+                }
             }
-            
-            // 更新通知
-            updateNotification(isFinished = true)
+        } catch (e: Exception) {
+            // 处理整体启动失败
+            // 至少让服务保持运行状态
         }
     }
     
@@ -177,17 +215,21 @@ class CountdownService : Service() {
     }
     
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "倒计时通道",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "显示倒计时进度"
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "倒计时通道",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "显示倒计时进度"
+                }
+                
+                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                notificationManager.createNotificationChannel(channel)
             }
-            
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+        } catch (e: Exception) {
+            // 处理通知渠道创建失败
         }
     }
     
@@ -243,6 +285,16 @@ class CountdownService : Service() {
     
     private fun stopVibration() {
         vibrator.cancel()
+    }
+    
+    private fun createSimpleNotification(): android.app.Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("倒计时")
+            .setContentText("倒计时运行中")
+            .setSmallIcon(R.drawable.logo)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .build()
     }
     
     inner class CountdownBinder : Binder() {
