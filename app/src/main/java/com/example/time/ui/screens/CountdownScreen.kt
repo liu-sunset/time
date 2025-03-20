@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import androidx.compose.runtime.CompositionLocalProvider
 
 // 添加背景渐变色数据类
 private data class GradientBackgroundColor(
@@ -329,15 +330,27 @@ fun CountdownScreen(
     // 添加卡片背景索引状态
     var cardBackgroundIndex by remember { mutableStateOf(0) } // 初始为白色
     
-    // 定期切换卡片背景色 (20分钟)
-    LaunchedEffect(Unit, isStyleFixed) {
+    // 修改卡片背景切换逻辑，使其更加随机
+    LaunchedEffect(Unit, isStyleFixed, totalSeconds) { // 添加totalSeconds作为依赖项
         // 首次等待较长时间，确保用户能看到白色背景
         delay(1000*60*10) // 10分钟
         
+        // 如果totalSeconds发生变化，重置为白色背景
+        if (totalSeconds > 0) {
+            cardBackgroundIndex = 0
+        }
+        
         while(true) {
             if (!isStyleFixed) { // 只有在未固定样式时才切换卡片背景
-                // 切换到下一个背景
-                cardBackgroundIndex = (cardBackgroundIndex + 1) % cardBackgrounds.size
+                // 随机选择一个不同于当前索引的新索引
+                var newIndex: Int
+                do {
+                    // 从1开始，确保不会随机到白色背景(索引0)
+                    newIndex = Random.nextInt(1, cardBackgrounds.size)
+                } while (newIndex == cardBackgroundIndex)
+                
+                // 切换到新的随机背景
+                cardBackgroundIndex = newIndex
             }
             delay(1000*60*10) // 10分钟切换一次
         }
@@ -486,22 +499,44 @@ fun CountdownScreen(
         // 根据倒计时状态显示不同内容
         if (!isCountdownFinished) {
             // 原有的倒计时显示内容
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp)
+            CompositionLocalProvider(
+                LocalCardBackground provides cardBackgrounds[cardBackgroundIndex]
             ) {
-                // 使用计算好的值
-                val (hours, minutes, seconds, prevHours, prevMinutes, prevSeconds, hasHours, digitSize, cardWidth, cardHeight) = timeValues
-                
-                // 翻页时钟组件
-                if (hasHours) {
-                    // 显示小时
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp)
+                ) {
+                    // 使用计算好的值
+                    val (hours, minutes, seconds, prevHours, prevMinutes, prevSeconds, hasHours, digitSize, cardWidth, cardHeight) = timeValues
+                    
+                    // 翻页时钟组件
+                    if (hasHours) {
+                        // 显示小时
+                        FlipTimeUnit(
+                            value = hours,
+                            prevValue = prevHours,
+                            digitSize = digitSize,
+                            cardWidth = cardWidth,
+                            cardHeight = cardHeight
+                        )
+                        
+                        // 分隔符
+                        Text(
+                            text = ":",
+                            color = if (isDarkMode) Color.White else Color.Black,
+                            fontSize = if (hasHours) 60.sp else 80.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    }
+                    
+                    // 显示分钟
                     FlipTimeUnit(
-                        value = hours,
-                        prevValue = prevHours,
+                        value = minutes,
+                        prevValue = prevMinutes,
                         digitSize = digitSize,
                         cardWidth = cardWidth,
                         cardHeight = cardHeight
@@ -515,34 +550,16 @@ fun CountdownScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
+                    
+                    // 显示秒钟
+                    FlipTimeUnit(
+                        value = seconds,
+                        prevValue = prevSeconds,
+                        digitSize = digitSize,
+                        cardWidth = cardWidth,
+                        cardHeight = cardHeight
+                    )
                 }
-                
-                // 显示分钟
-                FlipTimeUnit(
-                    value = minutes,
-                    prevValue = prevMinutes,
-                    digitSize = digitSize,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight
-                )
-                
-                // 分隔符
-                Text(
-                    text = ":",
-                    color = if (isDarkMode) Color.White else Color.Black,
-                    fontSize = if (hasHours) 60.sp else 80.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                
-                // 显示秒钟
-                FlipTimeUnit(
-                    value = seconds,
-                    prevValue = prevSeconds,
-                    digitSize = digitSize,
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight
-                )
             }
         } else {
             // 倒计时结束，显示闹钟动画
@@ -625,6 +642,11 @@ private fun FlipDigit(
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp
 ) {
+    // 获取当前选中的卡片背景
+    val cardBackground = LocalCardBackground.current
+    val cardBackgroundColor = cardBackground.color
+    val hasTexture = cardBackground.hasTexture
+
     // 优化翻转检测逻辑 - 添加首次渲染时的动画效果
     val initialRender = remember { mutableStateOf(true) }
     val isFlipping = remember(digit, prevDigit) { 
@@ -664,9 +686,14 @@ private fun FlipDigit(
                 .align(Alignment.TopCenter)
                 .shadow(4.dp, RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
                 .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp)),
-            color = Color.White
+            color = cardBackgroundColor // 使用当前选中的背景色
         ) {
             Box(contentAlignment = Alignment.Center) {
+                // 添加纹理(如果有)
+                if (hasTexture) {
+                    CardTexture(modifier = Modifier.fillMaxSize())
+                }
+                
                 // 静态上半部分数字
                 if (animationProgress.value < 0.5f) {
                     Text(
@@ -698,9 +725,14 @@ private fun FlipDigit(
                 .align(Alignment.BottomCenter)
                 .shadow(4.dp, RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
                 .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp)),
-            color = Color.White
+            color = cardBackgroundColor // 使用当前选中的背景色
         ) {
             Box(contentAlignment = Alignment.Center) {
+                // 添加纹理(如果有)
+                if (hasTexture) {
+                    CardTexture(modifier = Modifier.fillMaxSize())
+                }
+                
                 // 静态下半部分数字
                 if (animationProgress.value < 0.5f) {
                     Text(
@@ -750,9 +782,14 @@ private fun FlipDigit(
                             rotationX = -topFlipProgress * 90 // 0 -> -90
                             transformOrigin = TransformOrigin(0.5f, 1f)
                         },
-                    color = Color.White
+                    color = cardBackgroundColor // 使用当前选中的背景色
                 ) {
                     Box(contentAlignment = Alignment.Center) {
+                        // 添加纹理(如果有)
+                        if (hasTexture) {
+                            CardTexture(modifier = Modifier.fillMaxSize())
+                        }
+                        
                         Text(
                             text = prevDigit.toString(), 
                             fontSize = digitSize,
@@ -777,9 +814,14 @@ private fun FlipDigit(
                             rotationX = (1 - bottomFlipProgress) * 90 // 90 -> 0
                             transformOrigin = TransformOrigin(0.5f, 0f)
                         },
-                    color = Color.White
+                    color = cardBackgroundColor // 使用当前选中的背景色
                 ) {
                     Box(contentAlignment = Alignment.Center) {
+                        // 添加纹理(如果有)
+                        if (hasTexture) {
+                            CardTexture(modifier = Modifier.fillMaxSize())
+                        }
+                        
                         Text(
                             text = digit.toString(),
                             fontSize = digitSize,
@@ -884,3 +926,6 @@ fun CardTexture(modifier: Modifier = Modifier) {
         }
     }
 }
+
+// 创建CompositionLocal来传递当前卡片背景
+private val LocalCardBackground = compositionLocalOf { CardBackground("白色", Color.White) }
