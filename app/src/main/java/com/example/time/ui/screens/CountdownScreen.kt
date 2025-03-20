@@ -210,7 +210,7 @@ fun CountdownScreen(
         }
         
         while (true) {
-            delay(1000*60*15) // 修改为5分钟切换一次
+            delay(1000*60*5) // 修改为5分钟切换一次
             if (!isDarkMode && !isStyleFixed) { // 只有在非暗黑模式且未固定样式时才切换
                 // 获取当前颜色索引和类型
                 val currentColorIndex = colorIndex
@@ -332,14 +332,14 @@ fun CountdownScreen(
     // 定期切换卡片背景色 (20分钟)
     LaunchedEffect(Unit, isStyleFixed) {
         // 首次等待较长时间，确保用户能看到白色背景
-        delay(1000*60*20) // 20分钟
+        delay(1000*60*10) // 10分钟
         
         while(true) {
             if (!isStyleFixed) { // 只有在未固定样式时才切换卡片背景
                 // 切换到下一个背景
                 cardBackgroundIndex = (cardBackgroundIndex + 1) % cardBackgrounds.size
             }
-            delay(1000*60*20) // 20分钟切换一次
+            delay(1000*60*10) // 10分钟切换一次
         }
     }
     

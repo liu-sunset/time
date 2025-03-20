@@ -57,8 +57,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 绑定服务
+        // 修改为显式启动服务
         Intent(this, CountdownService::class.java).also { intent ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
             bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
         

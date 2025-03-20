@@ -121,30 +121,22 @@ class CountdownService : Service() {
             isAlarmSoundEnabled = alarmEnabled
             _remainingSeconds.value = seconds
             
-            // 获取并持有WakeLock，确保在锁屏时CPU继续运行
+            // 修改WakeLock获取逻辑
             if (!isWakeLockHeld && seconds > 0) {
                 try {
-                    wakeLock.acquire(seconds * 1000 + 60000) // 倒计时时间 + 额外1分钟
+                    // 移除超时参数，使用acquire()而不是acquire(timeout)
+                    wakeLock.acquire()
                     isWakeLockHeld = true
                 } catch (e: Exception) {
-                    // 处理WakeLock获取失败的情况
                     isWakeLockHeld = false
-                    // 记录日志但继续执行
                 }
             }
             
-            // 启动为前台服务 - 添加错误处理
+            // 确保服务保持前台状态
             try {
                 startForeground(NOTIFICATION_ID, createNotification())
             } catch (e: Exception) {
-                // 处理前台服务启动失败
-                // 可以尝试使用不同的通知配置再次尝试
-                try {
-                    val simpleNotification = createSimpleNotification()
-                    startForeground(NOTIFICATION_ID, simpleNotification)
-                } catch (e: Exception) {
-                    // 如果仍然失败，至少让服务继续运行
-                }
+                // 即使失败也继续运行
             }
             
             // 启动倒计时
@@ -189,8 +181,7 @@ class CountdownService : Service() {
                 }
             }
         } catch (e: Exception) {
-            // 处理整体启动失败
-            // 至少让服务保持运行状态
+            // 错误处理
         }
     }
     
@@ -199,7 +190,7 @@ class CountdownService : Service() {
         stopVibration()
         ringtonePlayer.stopRingtone()
         
-        // 释放WakeLock
+        // 释放WakeLock时添加判断
         if (isWakeLockHeld) {
             try {
                 if (wakeLock.isHeld) {
@@ -207,11 +198,12 @@ class CountdownService : Service() {
                 }
                 isWakeLockHeld = false
             } catch (e: Exception) {
-                // 处理可能的异常
+                // 处理异常
             }
         }
         
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        // 保持通知直到用户主动关闭
+        stopForeground(false)
     }
     
     private fun createNotificationChannel() {
