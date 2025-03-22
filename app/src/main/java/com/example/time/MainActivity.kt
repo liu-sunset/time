@@ -33,11 +33,15 @@ import android.content.ServiceConnection
 import android.content.Intent
 import androidx.compose.runtime.collectAsState
 import com.example.time.services.CountdownService
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 
 class MainActivity : ComponentActivity() {
     private lateinit var vibrator: Vibrator
     private var countdownService: CountdownService? = null
     private var isBound = false
+    private var isFirstLaunch = false
 
     // 服务连接
     private val serviceConnection = object : ServiceConnection {
@@ -56,6 +60,15 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 检查是否首次启动
+        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        isFirstLaunch = sharedPreferences.getBoolean("is_first_launch", true)
+        
+        // 如果是首次启动，更新首次启动状态
+        if (isFirstLaunch) {
+            sharedPreferences.edit().putBoolean("is_first_launch", false).apply()
+        }
         
         // 修改为显式启动服务
         Intent(this, CountdownService::class.java).also { intent ->
@@ -90,6 +103,9 @@ class MainActivity : ComponentActivity() {
             TimeTheme {
                 // 优化5: 使用key让Compose更好地追踪状态，避免不必要的重组
                 key(Unit) {
+                    // 在这里创建对话框状态变量
+                    var showPermissionDialog by remember { mutableStateOf(isFirstLaunch) }
+                    
                     // 优化6: 使用记忆化的状态，确保恢复时状态正确
                     var isCountdownStarted by remember { mutableStateOf(false) }
                     var totalSeconds by remember { mutableStateOf(0L) }
@@ -103,6 +119,20 @@ class MainActivity : ComponentActivity() {
                     
                     // 可以添加一个铃声开关状态
                     var isAlarmSoundEnabled by remember { mutableStateOf(true) }
+                    
+                    // 权限提示弹框
+                    if (showPermissionDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showPermissionDialog = false },
+                            title = { Text("权限提示") },
+                            text = { Text("请开启软件的后台运行权限，否则会影响部分功能的使用") },
+                            confirmButton = {
+                                TextButton(onClick = { showPermissionDialog = false }) {
+                                    Text("我知道了")
+                                }
+                            }
+                        )
+                    }
                     
                     // 优化7: 屏幕方向变更使用LaunchedEffect而不是每次重组都执行
                     LaunchedEffect(isCountdownStarted) {
