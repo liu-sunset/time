@@ -22,12 +22,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.cancel
 
 class CountdownService : Service() {
     private val binder = CountdownBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Default)
+    private val serviceIOScope = CoroutineScope(Dispatchers.IO)
     private var countdownJob: Job? = null
     
     private lateinit var vibrator: Vibrator
@@ -53,18 +56,24 @@ class CountdownService : Service() {
     
     override fun onCreate() {
         super.onCreate()
-        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        ringtonePlayer = RingtonePlayer(this)
-        
-        // 初始化WakeLock
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "CountdownService::WakeLock"
-        )
-        
-        // 创建通知渠道
-        createNotificationChannel()
+        try {
+            vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            ringtonePlayer = RingtonePlayer(this)
+            
+            // 初始化WakeLock
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "CountdownService::WakeLock"
+            )
+            
+            // 在IO线程创建通知渠道
+            serviceIOScope.launch {
+                createNotificationChannel()
+            }
+        } catch (e: Exception) {
+            // 记录异常但继续执行
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -72,23 +81,34 @@ class CountdownService : Service() {
         if (intent != null) {
             val action = intent.action
             
-            when (action) {
-                ACTION_START_COUNTDOWN -> {
-                    val seconds = intent.getLongExtra(EXTRA_COUNTDOWN_SECONDS, 0)
-                    val vibrationEnabled = intent.getBooleanExtra(EXTRA_VIBRATION_ENABLED, false)
-                    val alarmEnabled = intent.getBooleanExtra(EXTRA_ALARM_ENABLED, true)
-                    
-                    startCountdown(seconds, vibrationEnabled, alarmEnabled)
+            try {
+                when (action) {
+                    ACTION_START_COUNTDOWN -> {
+                        val seconds = intent.getLongExtra(EXTRA_COUNTDOWN_SECONDS, 0)
+                        val vibrationEnabled = intent.getBooleanExtra(EXTRA_VIBRATION_ENABLED, false)
+                        val alarmEnabled = intent.getBooleanExtra(EXTRA_ALARM_ENABLED, true)
+                        
+                        // 确保使用非阻塞方式启动倒计时
+                        serviceScope.launch {
+                            startCountdown(seconds, vibrationEnabled, alarmEnabled)
+                        }
+                    }
+                    ACTION_STOP_COUNTDOWN -> {
+                        serviceScope.launch {
+                            stopCountdown()
+                        }
+                        stopSelf()
+                    }
+                    ACTION_UPDATE_SETTINGS -> {
+                        isVibrationEnabled = intent.getBooleanExtra(EXTRA_VIBRATION_ENABLED, isVibrationEnabled)
+                        isAlarmSoundEnabled = intent.getBooleanExtra(EXTRA_ALARM_ENABLED, isAlarmSoundEnabled)
+                        serviceIOScope.launch {
+                            updateNotification()
+                        }
+                    }
                 }
-                ACTION_STOP_COUNTDOWN -> {
-                    stopCountdown()
-                    stopSelf()
-                }
-                ACTION_UPDATE_SETTINGS -> {
-                    isVibrationEnabled = intent.getBooleanExtra(EXTRA_VIBRATION_ENABLED, isVibrationEnabled)
-                    isAlarmSoundEnabled = intent.getBooleanExtra(EXTRA_ALARM_ENABLED, isAlarmSoundEnabled)
-                    updateNotification()
-                }
+            } catch (e: Exception) {
+                // 捕获并处理任何异常
             }
         }
         
@@ -111,6 +131,8 @@ class CountdownService : Service() {
         }
         
         stopCountdown()
+        serviceScope.cancel()
+        serviceIOScope.cancel()
         super.onDestroy()
     }
     
@@ -121,22 +143,29 @@ class CountdownService : Service() {
             isAlarmSoundEnabled = alarmEnabled
             _remainingSeconds.value = seconds
             
-            // 修改WakeLock获取逻辑
-            if (!isWakeLockHeld && seconds > 0) {
-                try {
-                    // 移除超时参数，使用acquire()而不是acquire(timeout)
-                    wakeLock.acquire()
-                    isWakeLockHeld = true
-                } catch (e: Exception) {
-                    isWakeLockHeld = false
+            // 将WakeLock操作移到IO线程
+            serviceIOScope.launch {
+                if (!isWakeLockHeld && seconds > 0) {
+                    try {
+                        wakeLock.acquire()
+                        isWakeLockHeld = true
+                    } catch (e: Exception) {
+                        isWakeLockHeld = false
+                    }
                 }
             }
             
-            // 确保服务保持前台状态
-            try {
-                startForeground(NOTIFICATION_ID, createNotification())
-            } catch (e: Exception) {
-                // 即使失败也继续运行
+            // 在IO线程上预先创建通知
+            serviceIOScope.launch {
+                val notification = createNotification()
+                try {
+                    // 在主线程上设置前台服务状态
+                    withContext(Dispatchers.Main) {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                } catch (e: Exception) {
+                    // 处理异常
+                }
             }
             
             // 启动倒计时
@@ -145,39 +174,48 @@ class CountdownService : Service() {
                 while (_remainingSeconds.value > 0) {
                     delay(1000)
                     _remainingSeconds.value--
-                    try {
-                        updateNotification()
-                    } catch (e: Exception) {
-                        // 处理通知更新失败
+                    
+                    // 在IO线程上更新通知，避免阻塞
+                    serviceIOScope.launch {
+                        try {
+                            updateNotification()
+                        } catch (e: Exception) {
+                            // 处理通知更新失败
+                        }
                     }
                 }
                 
                 // 倒计时结束
                 _isCountdownFinished.value = true
                 
-                // 触发震动
-                if (isVibrationEnabled) {
-                    try {
-                        startVibration()
-                    } catch (e: Exception) {
-                        // 处理震动失败
+                // 在IO线程上执行振动和铃声操作
+                serviceIOScope.launch {
+                    // 触发震动
+                    if (isVibrationEnabled) {
+                        try {
+                            startVibration()
+                        } catch (e: Exception) {
+                            // 处理震动失败
+                        }
                     }
-                }
-                
-                // 播放铃声
-                if (isAlarmSoundEnabled) {
-                    try {
-                        ringtonePlayer.playRingtone()
-                    } catch (e: Exception) {
-                        // 处理铃声播放失败
+                    
+                    // 播放铃声
+                    if (isAlarmSoundEnabled) {
+                        try {
+                            ringtonePlayer.playRingtone()
+                        } catch (e: Exception) {
+                            // 处理铃声播放失败
+                        }
                     }
                 }
                 
                 // 更新通知
-                try {
-                    updateNotification(isFinished = true)
-                } catch (e: Exception) {
-                    // 处理通知更新失败
+                serviceIOScope.launch {
+                    try {
+                        updateNotification(isFinished = true)
+                    } catch (e: Exception) {
+                        // 处理通知更新失败
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -187,18 +225,24 @@ class CountdownService : Service() {
     
     private fun stopCountdown() {
         countdownJob?.cancel()
-        stopVibration()
-        ringtonePlayer.stopRingtone()
         
-        // 释放WakeLock时添加判断
-        if (isWakeLockHeld) {
-            try {
-                if (wakeLock.isHeld) {
-                    wakeLock.release()
+        // 在IO线程上执行停止振动和铃声
+        serviceIOScope.launch {
+            stopVibration()
+            ringtonePlayer.stopRingtone()
+        }
+        
+        // 在IO线程上释放WakeLock
+        serviceIOScope.launch {
+            if (isWakeLockHeld) {
+                try {
+                    if (wakeLock.isHeld) {
+                        wakeLock.release()
+                    }
+                    isWakeLockHeld = false
+                } catch (e: Exception) {
+                    // 处理异常
                 }
-                isWakeLockHeld = false
-            } catch (e: Exception) {
-                // 处理异常
             }
         }
         
