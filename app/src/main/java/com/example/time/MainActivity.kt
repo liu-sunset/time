@@ -36,6 +36,8 @@ import com.example.time.services.CountdownService
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.os.Handler
+import android.os.Looper
 
 class MainActivity : ComponentActivity() {
     private lateinit var vibrator: Vibrator
@@ -246,17 +248,30 @@ class MainActivity : ComponentActivity() {
 
     // 启动倒计时服务的辅助方法
     private fun startCountdownService(seconds: Long, isVibrationEnabled: Boolean, isAlarmEnabled: Boolean) {
-        val intent = Intent(this, CountdownService::class.java).apply {
+        // 先创建显式启动意图
+        val serviceIntent = Intent(this, CountdownService::class.java).apply {
             action = CountdownService.ACTION_START_COUNTDOWN
             putExtra(CountdownService.EXTRA_COUNTDOWN_SECONDS, seconds)
             putExtra(CountdownService.EXTRA_VIBRATION_ENABLED, isVibrationEnabled)
             putExtra(CountdownService.EXTRA_ALARM_ENABLED, isAlarmEnabled)
         }
-        
+
+        // 先启动服务再绑定
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
+            startForegroundService(serviceIntent)
         } else {
-            startService(intent)
+            startService(serviceIntent)
+        }
+        
+        // 延迟绑定确保服务初始化完成
+        if (!isBound) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                bindService(
+                    Intent(this, CountdownService::class.java),
+                    serviceConnection,
+                    Context.BIND_AUTO_CREATE
+                )
+            }, 500) // 延迟500ms绑定
         }
     }
 

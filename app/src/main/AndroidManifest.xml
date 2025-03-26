@@ -34,7 +34,8 @@
         <service
             android:name=".services.CountdownService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging|specialUse"/>
     </application>
 
 </manifest>
