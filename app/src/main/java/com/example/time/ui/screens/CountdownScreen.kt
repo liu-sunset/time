@@ -333,7 +333,7 @@ fun CountdownScreen(
     // 修改卡片背景切换逻辑，使其更加随机
     LaunchedEffect(Unit, isStyleFixed, totalSeconds) { // 添加totalSeconds作为依赖项
         // 首次等待较长时间，确保用户能看到白色背景
-        delay(1000*60*10) // 10分钟
+        delay(1000*60*7) // 7分钟
         
         // 如果totalSeconds发生变化，重置为白色背景
         if (totalSeconds > 0) {
@@ -352,7 +352,7 @@ fun CountdownScreen(
                 // 切换到新的随机背景
                 cardBackgroundIndex = newIndex
             }
-            delay(1000*60*10) // 10分钟切换一次
+            delay(1000*60*7) // 7分钟切换一次
         }
     }
     
