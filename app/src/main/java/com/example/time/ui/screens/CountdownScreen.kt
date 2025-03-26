@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 // 添加背景渐变色数据类
 private data class GradientBackgroundColor(
@@ -211,7 +212,7 @@ fun CountdownScreen(
         }
         
         while (true) {
-            delay(1000*60*5) // 修改为5分钟切换一次
+            delay(1000*60*15) // 修改为15分钟切换一次（原为5分钟）
             if (!isDarkMode && !isStyleFixed) { // 只有在非暗黑模式且未固定样式时才切换
                 // 获取当前颜色索引和类型
                 val currentColorIndex = colorIndex
@@ -240,25 +241,22 @@ fun CountdownScreen(
     }
     
     // 添加常亮功能
-    DisposableEffect(isKeepScreenOn) {
-        // 获取Activity和Window
-        val activity = view.context as? android.app.Activity
-        activity?.window?.let { window ->
-            // 直接在Window级别设置FLAG_KEEP_SCREEN_ON标志
-            if (isKeepScreenOn) {
-                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isAppInForeground by remember { mutableStateOf(true) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            isAppInForeground = when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> true
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> false
+                else -> isAppInForeground
             }
         }
         
-        // 同时也设置view的keepScreenOn属性作为双重保障
-        view.keepScreenOn = isKeepScreenOn
+        lifecycleOwner.lifecycle.addObserver(observer)
         
         onDispose {
-            // 清除窗口标志
-            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            view.keepScreenOn = false
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
     
@@ -333,7 +331,7 @@ fun CountdownScreen(
     // 修改卡片背景切换逻辑，使其更加随机
     LaunchedEffect(Unit, isStyleFixed, totalSeconds) { // 添加totalSeconds作为依赖项
         // 首次等待较长时间，确保用户能看到白色背景
-        delay(1000*60*7) // 7分钟
+        delay(1000*60*10) // 10分钟（原为7分钟）
         
         // 如果totalSeconds发生变化，重置为白色背景
         if (totalSeconds > 0) {
@@ -352,7 +350,30 @@ fun CountdownScreen(
                 // 切换到新的随机背景
                 cardBackgroundIndex = newIndex
             }
-            delay(1000*60*7) // 7分钟切换一次
+            delay(1000*60*20) // 20分钟切换一次（原为7分钟）
+        }
+    }
+    
+    // 优化常亮功能，确保应用在后台时不保持屏幕常亮
+    DisposableEffect(isKeepScreenOn, isAppInForeground) {
+        // 获取Activity和Window
+        val activity = view.context as? android.app.Activity
+        activity?.window?.let { window ->
+            // 只有当需要常亮且应用在前台时才保持屏幕常亮
+            if (isKeepScreenOn && isAppInForeground) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+        
+        // 同时也设置view的keepScreenOn属性作为双重保障
+        view.keepScreenOn = isKeepScreenOn && isAppInForeground
+        
+        onDispose {
+            // 清除窗口标志
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            view.keepScreenOn = false
         }
     }
     
@@ -657,11 +678,12 @@ private fun FlipDigit(
     val animationProgress = remember(digit, prevDigit) { Animatable(0f) }
     
     LaunchedEffect(digit, prevDigit) {
-        // 重置动画开始值
-        animationProgress.snapTo(0f)
-        
-        if (isFlipping) {
+        // 只有当数字真的变化或是初始渲染时才触发动画
+        if (digit != prevDigit || initialRender.value) {
+            // 重置动画开始值
+            animationProgress.snapTo(0f)
             initialRender.value = false // 标记初始渲染已完成
+            
             animationProgress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
