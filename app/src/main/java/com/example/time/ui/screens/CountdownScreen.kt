@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -715,6 +716,17 @@ private fun FlipDigit(
     val cardBackgroundColor = cardBackground.color
     val hasTexture = cardBackground.hasTexture
     val contentColor = cardBackground.contentColor
+    
+    // 获取当前主题属性
+    val themeProperties = LocalThemeProperties.current
+    val cornerRadius = themeProperties.cardCornerRadius
+    val elevation = themeProperties.cardElevation
+    val borderWidth = themeProperties.cardBorderWidth
+    val borderColor = themeProperties.cardBorderColor
+    
+    // 定义形状
+    val topShape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
+    val bottomShape = RoundedCornerShape(bottomStart = cornerRadius, bottomEnd = cornerRadius)
 
     // 添加颜色平滑过渡动画
     val animatedCardBackgroundColor by animateColorAsState(
@@ -765,8 +777,9 @@ private fun FlipDigit(
                 .fillMaxWidth()
                 .height(cardHeight / 2)
                 .align(Alignment.TopCenter)
-                .shadow(4.dp, RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
-                .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp)),
+                .shadow(elevation, topShape)
+                .clip(topShape)
+                .then(if (borderWidth > 0.dp) Modifier.border(borderWidth, borderColor, topShape) else Modifier),
             color = animatedCardBackgroundColor // 使用动画过渡的背景色
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -890,7 +903,9 @@ private fun FlipDigit(
                         .fillMaxWidth()
                         .height(cardHeight / 2)
                         .align(Alignment.BottomCenter)
-                        .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
+                        .shadow(elevation, bottomShape)
+                        .clip(bottomShape)
+                        .then(if (borderWidth > 0.dp) Modifier.border(borderWidth, borderColor, bottomShape) else Modifier)
                         .graphicsLayer {
                             rotationX = (1 - bottomFlipProgress) * 90 // 90 -> 0
                             transformOrigin = TransformOrigin(0.5f, 0f)

@@ -27,7 +27,7 @@ data class ThemeProperties(
     // Card properties
     val cardBackgroundColor: Color = Color.White,
     val cardContentColor: Color = Color.Black,
-    val cardShape: Shape = RoundedCornerShape(8.dp),
+    val cardCornerRadius: Dp = 8.dp,
     val cardElevation: Dp = 4.dp,
     val cardBorderWidth: Dp = 0.dp,
     val cardBorderColor: Color = Color.Transparent,
@@ -67,43 +67,45 @@ object ThemeDefinitions {
             
             CountdownTheme.LiquidGlass -> ThemeProperties(
                 id = CountdownTheme.LiquidGlass,
-                backgroundBrush = Brush.verticalGradient(
+                backgroundBrush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFFE0F7FA), // Light Cyan
-                        Color(0xFFB2EBF2),
-                        Color(0xFF80DEEA)
-                    )
+                        Color(0xFFFFDEE9), // Lady Lips Pink
+                        Color(0xFFB5FFFC)  // Evening Sunshine Blue
+                    ),
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(1000f, 2000f)
                 ),
-                cardBackgroundColor = Color.White.copy(alpha = 0.6f),
-                cardContentColor = Color(0xFF006064), // Dark Cyan
-                cardShape = RoundedCornerShape(16.dp),
+                cardBackgroundColor = Color.White.copy(alpha = 0.25f),
+                cardContentColor = Color.White,
+                cardCornerRadius = 24.dp,
                 cardElevation = 0.dp,
                 cardBorderWidth = 1.dp,
-                cardBorderColor = Color.White.copy(alpha = 0.5f),
-                textColor = Color(0xFF006064),
+                cardBorderColor = Color.White.copy(alpha = 0.4f),
+                textColor = Color.White,
                 useBlurEffect = true
             )
             
             CountdownTheme.SoftNeumorphism -> ThemeProperties(
                 id = CountdownTheme.SoftNeumorphism,
-                backgroundColor = Color(0xFFE0E5EC),
-                cardBackgroundColor = Color(0xFFE0E5EC),
-                cardContentColor = Color(0xFF4A5568),
-                cardShape = RoundedCornerShape(12.dp),
-                cardElevation = 8.dp, // High elevation for neumorphic feel
-                textColor = Color(0xFF4A5568)
+                backgroundColor = Color(0xFFE6E1D6), // Warm Paper/Linen
+                cardBackgroundColor = Color(0xFFE6E1D6),
+                cardContentColor = Color(0xFF5D5550), // Warm Dark Grey
+                cardCornerRadius = 16.dp,
+                cardElevation = 6.dp, // Softer elevation
+                textColor = Color(0xFF5D5550),
+                hasTexture = true // Add texture for "Material/Paper" feel
             )
             
             CountdownTheme.MinimalistZen -> ThemeProperties(
                 id = CountdownTheme.MinimalistZen,
-                backgroundColor = Color(0xFFF9F9F7), // Rice paper color
-                cardBackgroundColor = Color(0xFFEBEBE8),
-                cardContentColor = Color(0xFF5D5D5D), // Dark Grey
-                cardShape = RoundedCornerShape(2.dp),
+                backgroundColor = Color(0xFFFFFFFF), // Pure White
+                cardBackgroundColor = Color.White,
+                cardContentColor = Color(0xFF2C2C2C), // Almost Black
+                cardCornerRadius = 0.dp, // Sharp corners
                 cardElevation = 0.dp,
-                cardBorderWidth = 1.dp,
-                cardBorderColor = Color(0xFFD3D3D3),
-                textColor = Color(0xFF5D5D5D)
+                cardBorderWidth = 1.dp, // Thin line
+                cardBorderColor = Color(0xFF2C2C2C),
+                textColor = Color(0xFF2C2C2C)
             )
         }
     }
