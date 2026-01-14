@@ -125,9 +125,8 @@ fun ThemeOptionItem(
 private fun getThemePreviewColor(theme: CountdownTheme): Color {
     return when (theme) {
         CountdownTheme.Default -> Color(0xFF6C8EB2) // 雾霭蓝
-        CountdownTheme.LiquidGlass -> Color(0xFFE0F7FA)
         CountdownTheme.SoftNeumorphism -> Color(0xFFE0E5EC)
-        CountdownTheme.MinimalistZen -> Color(0xFFF9F9F7)
+        CountdownTheme.VintagePaper -> Color(0xFFF5E6D3)
         CountdownTheme.Dark -> Color(0xFF212121)
     }
 }

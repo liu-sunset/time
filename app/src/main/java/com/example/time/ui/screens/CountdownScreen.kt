@@ -794,7 +794,8 @@ private fun FlipDigit(
                         text = prevDigit.toString(),
                         fontSize = digitSize,
                         color = animatedContentColor,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = themeProperties.fontWeight,
+                        fontFamily = themeProperties.fontFamily,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = cardHeight / 4)
                     )
@@ -803,7 +804,8 @@ private fun FlipDigit(
                         text = digit.toString(),
                         fontSize = digitSize,
                         color = animatedContentColor,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = themeProperties.fontWeight,
+                        fontFamily = themeProperties.fontFamily,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = cardHeight / 4)
                     )
@@ -833,7 +835,8 @@ private fun FlipDigit(
                         text = prevDigit.toString(),
                         fontSize = digitSize,
                         color = animatedContentColor, // 修复：使用 animatedContentColor
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = themeProperties.fontWeight,
+                        fontFamily = themeProperties.fontFamily,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = -cardHeight / 4)
                     )
@@ -842,7 +845,8 @@ private fun FlipDigit(
                         text = digit.toString(),
                         fontSize = digitSize,
                         color = animatedContentColor, // 修复：使用 animatedContentColor
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = themeProperties.fontWeight,
+                        fontFamily = themeProperties.fontFamily,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = -cardHeight / 4)
                     )
@@ -888,7 +892,8 @@ private fun FlipDigit(
                             text = prevDigit.toString(), 
                             fontSize = digitSize,
                             color = animatedContentColor, // 修复：使用 animatedContentColor
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = themeProperties.fontWeight,
+                            fontFamily = themeProperties.fontFamily,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.offset(y = cardHeight / 4)
                         )
@@ -922,7 +927,8 @@ private fun FlipDigit(
                             text = digit.toString(),
                             fontSize = digitSize,
                             color = animatedContentColor, // 修复：使用 animatedContentColor
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = themeProperties.fontWeight,
+                            fontFamily = themeProperties.fontFamily,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.offset(y = -cardHeight / 4)
                         )

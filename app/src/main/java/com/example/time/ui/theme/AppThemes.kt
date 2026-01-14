@@ -12,9 +12,8 @@ import androidx.compose.runtime.compositionLocalOf
 
 enum class CountdownTheme(val displayName: String) {
     Default("默认动态"),
-    LiquidGlass("流体玻璃"),
     SoftNeumorphism("柔和拟物"),
-    MinimalistZen("极简禅意"),
+    VintagePaper("复古纸张"),
     Dark("黑暗模式")
 }
 
@@ -40,8 +39,7 @@ data class ThemeProperties(
     val textColor: Color = Color.Black,
     
     // Special flags
-    val isDynamic: Boolean = false, // For Default theme which changes periodically
-    val useBlurEffect: Boolean = false // For Liquid Glass
+    val isDynamic: Boolean = false // For Default theme which changes periodically
 )
 
 // Theme Definitions
@@ -65,26 +63,6 @@ object ThemeDefinitions {
                 textColor = Color.White
             )
             
-            CountdownTheme.LiquidGlass -> ThemeProperties(
-                id = CountdownTheme.LiquidGlass,
-                backgroundBrush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFFFFDEE9), // Lady Lips Pink
-                        Color(0xFFB5FFFC)  // Evening Sunshine Blue
-                    ),
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(1000f, 2000f)
-                ),
-                cardBackgroundColor = Color.White.copy(alpha = 0.25f),
-                cardContentColor = Color.White,
-                cardCornerRadius = 24.dp,
-                cardElevation = 0.dp,
-                cardBorderWidth = 1.dp,
-                cardBorderColor = Color.White.copy(alpha = 0.4f),
-                textColor = Color.White,
-                useBlurEffect = true
-            )
-            
             CountdownTheme.SoftNeumorphism -> ThemeProperties(
                 id = CountdownTheme.SoftNeumorphism,
                 backgroundColor = Color(0xFFE6E1D6), // Warm Paper/Linen
@@ -96,16 +74,16 @@ object ThemeDefinitions {
                 hasTexture = true // Add texture for "Material/Paper" feel
             )
             
-            CountdownTheme.MinimalistZen -> ThemeProperties(
-                id = CountdownTheme.MinimalistZen,
-                backgroundColor = Color(0xFFFFFFFF), // Pure White
-                cardBackgroundColor = Color.White,
-                cardContentColor = Color(0xFF2C2C2C), // Almost Black
-                cardCornerRadius = 0.dp, // Sharp corners
-                cardElevation = 0.dp,
-                cardBorderWidth = 1.dp, // Thin line
-                cardBorderColor = Color(0xFF2C2C2C),
-                textColor = Color(0xFF2C2C2C)
+            CountdownTheme.VintagePaper -> ThemeProperties(
+                id = CountdownTheme.VintagePaper,
+                backgroundColor = Color(0xFFF5E6D3), // Textured beige/light brown
+                cardBackgroundColor = Color(0xFFE8DCCA), // Slightly darker
+                cardContentColor = Color(0xFF5C4033), // Dark Brown (Sepia)
+                cardCornerRadius = 2.dp, // Irregular/rough look (simulated by small radius)
+                cardElevation = 2.dp,
+                textColor = Color(0xFF5C4033),
+                fontFamily = FontFamily.Monospace, // Classic Typewriter
+                hasTexture = true // Fiber/aged spots effect
             )
         }
     }
