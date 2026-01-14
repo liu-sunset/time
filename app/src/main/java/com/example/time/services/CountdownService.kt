@@ -120,12 +120,11 @@ class CountdownService : Service() {
     
     override fun onDestroy() {
         // 确保释放WakeLock
-        if (isWakeLockHeld && wakeLock.isHeld) {
+        if (wakeLock.isHeld) {
             try {
                 wakeLock.release()
-                isWakeLockHeld = false
             } catch (e: Exception) {
-                // 处理异常
+                // 记录异常
             }
         }
         
@@ -133,8 +132,6 @@ class CountdownService : Service() {
         serviceScope.cancel()
         serviceIOScope.cancel()
         
-        // 移除超时检测
-        serviceTimeoutHandler.removeCallbacks(serviceTimeoutRunnable)
         super.onDestroy()
     }
     
@@ -155,7 +152,8 @@ class CountdownService : Service() {
             serviceIOScope.launch {
                 if (!isWakeLockHeld && seconds > 0) {
                     try {
-                        wakeLock.acquire()
+                        // 添加超时限制，最多持有3小时(或根据你的需求调整)
+                        wakeLock.acquire(3 * 60 * 60 * 1000L) // 3小时的毫秒数
                         isWakeLockHeld = true
                     } catch (e: Exception) {
                         isWakeLockHeld = false
@@ -235,18 +233,13 @@ class CountdownService : Service() {
             ringtonePlayer.stopRingtone()
         }
         
-        // 在IO线程上释放WakeLock
-        serviceIOScope.launch {
-            if (isWakeLockHeld) {
-                try {
-                    if (wakeLock.isHeld) {
-                        wakeLock.release()
-                    }
-                    isWakeLockHeld = false
-                } catch (e: Exception) {
-                    // 处理异常
-                }
+        // 立即释放WakeLock，不要延迟
+        try {
+            if (wakeLock.isHeld) {
+                wakeLock.release()
             }
+        } catch (e: Exception) {
+            // 处理异常
         }
         
         // 保持通知直到用户主动关闭

@@ -20,9 +20,14 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Lock
+
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 // 添加一个自定义的缓动函数用于更平滑的滑动效果
 val EaseOutQuart = CubicBezierEasing(0.25f, 1f, 0.5f, 1f)
@@ -73,6 +78,8 @@ fun AnimatedToolMenu(
     onDarkModeToggle: (Boolean) -> Unit,
     isStyleFixed: Boolean = false,
     onStyleFixedToggle: (Boolean) -> Unit = {},
+    currentThemeName: String = "默认动态",
+    onThemeClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 创建包含图标、标题、状态和回调的菜单项数据
@@ -85,18 +92,11 @@ fun AnimatedToolMenu(
             onClick = { onVibrationToggle(!isVibrationEnabled) }
         ),
         MenuItemData(
-            icon = Icons.Filled.Lightbulb,
+            icon = Icons.Filled.Info,
             title = "常亮",
             statusText = if (isKeepScreenOn) "已开启" else "已关闭",
             isEnabled = isKeepScreenOn,
             onClick = { onKeepScreenOnToggle(!isKeepScreenOn) }
-        ),
-        MenuItemData(
-            icon = Icons.Filled.DarkMode,
-            title = "暗黑模式",
-            statusText = if (isDarkMode) "已开启" else "已关闭",
-            isEnabled = isDarkMode,
-            onClick = { onDarkModeToggle(!isDarkMode) }
         ),
         // 添加"固定样式"按钮到菜单项列表中
         MenuItemData(
@@ -105,6 +105,15 @@ fun AnimatedToolMenu(
             statusText = if (isStyleFixed) "已开启" else "已关闭",
             isEnabled = isStyleFixed,
             onClick = { onStyleFixedToggle(!isStyleFixed) }
+        ),
+        // 添加"切换主题"按钮
+        MenuItemData(
+            icon = Icons.Filled.Edit,
+            title = "切换主题",
+            statusText = currentThemeName,
+            isEnabled = false, // Action 类型不需要此字段
+            type = MenuItemType.Action,
+            onClick = onThemeClick
         )
     )
     
@@ -142,6 +151,8 @@ fun AnimatedToolMenu(
                     modifier = Modifier
                         .padding(12.dp)
                         .width(220.dp)  // 增加宽度以适应图标和状态文字
+                        .heightIn(max = 260.dp) // 限制最大高度以适应横屏模式
+                        .verticalScroll(rememberScrollState()) // 添加滚动支持
                 ) {
                     menuItems.forEachIndexed { index, menuItem ->
                         // 为每个菜单项添加延迟进入动画
@@ -231,17 +242,26 @@ fun AnimatedToolMenu(
                                 )
                             }
                             
-                            // 开关
-                            Switch(
-                                checked = menuItem.isEnabled,
-                                onCheckedChange = { menuItem.onClick() },
-                                colors = SwitchDefaults.colors( 
-                                    checkedThumbColor = if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF2196F3),
-                                    checkedTrackColor = if (isDarkMode) Color(0xFF4CAF50).copy(alpha = 0.5f) else Color(0xFF2196F3).copy(alpha = 0.5f),
-                                    uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.LightGray,
-                                    uncheckedTrackColor = if (isDarkMode) Color.DarkGray else Color.LightGray.copy(alpha = 0.6f)
+                            // 根据类型显示开关或箭头
+                            if (menuItem.type == MenuItemType.Toggle) {
+                                Switch(
+                                    checked = menuItem.isEnabled,
+                                    onCheckedChange = { menuItem.onClick() },
+                                    colors = SwitchDefaults.colors( 
+                                        checkedThumbColor = if (isDarkMode) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                                        checkedTrackColor = if (isDarkMode) Color(0xFF4CAF50).copy(alpha = 0.5f) else Color(0xFF2196F3).copy(alpha = 0.5f),
+                                        uncheckedThumbColor = if (isDarkMode) Color.Gray else Color.LightGray,
+                                        uncheckedTrackColor = if (isDarkMode) Color.DarkGray else Color.LightGray.copy(alpha = 0.6f)
+                                    )
                                 )
-                            )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowForward,
+                                    contentDescription = "Go",
+                                    tint = if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                         
                         // 不是最后一项添加分隔线
@@ -275,12 +295,17 @@ fun AnimatedToolMenu(
     }
 }
 
+enum class MenuItemType {
+    Toggle, Action
+}
+
 // 添加数据类来存储菜单项信息
 private data class MenuItemData(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String,
     val statusText: String,
     val isEnabled: Boolean,
+    val type: MenuItemType = MenuItemType.Toggle,
     val onClick: () -> Unit
 )
 

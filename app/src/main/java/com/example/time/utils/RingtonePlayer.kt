@@ -44,14 +44,25 @@ class RingtonePlayer(private val context: Context) {
                     
                     setDataSource(context, soundUri)
                     setLooping(true)
+                    setOnErrorListener { _, _, _ ->
+                        stopRingtone()
+                        true
+                    }
                     prepare()
                     start()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    stopRingtone()
                 }
             }
         } else {
-            mediaPlayer?.start()
+            try {
+                if (!mediaPlayer!!.isPlaying) {
+                    mediaPlayer?.start()
+                }
+            } catch (e: Exception) {
+                stopRingtone()
+            }
         }
     }
     

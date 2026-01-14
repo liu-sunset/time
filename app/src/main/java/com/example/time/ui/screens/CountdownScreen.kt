@@ -39,7 +39,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -55,6 +55,10 @@ import kotlin.random.Random
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLifecycleOwner
 
+import com.example.time.ui.theme.CountdownTheme
+import com.example.time.ui.theme.LocalThemeProperties
+import androidx.compose.ui.graphics.Brush
+
 // 添加背景渐变色数据类
 private data class GradientBackgroundColor(
     val name: String,
@@ -65,7 +69,8 @@ private data class GradientBackgroundColor(
 private data class CardBackground(
     val name: String,
     val color: Color,
-    val hasTexture: Boolean = false
+    val hasTexture: Boolean = false,
+    val contentColor: Color = Color.Black
 )
 
 @Composable
@@ -87,9 +92,12 @@ fun CountdownScreen(
     startCountdownService: (Long, Boolean, Boolean) -> Unit = { _, _, _ -> },
     stopCountdownService: () -> Unit = {},
     serviceRemainingSeconds: Long? = null,
-    serviceCountdownFinished: Boolean = false
+    serviceCountdownFinished: Boolean = false,
+    currentTheme: CountdownTheme = CountdownTheme.Default,
+    onThemeChange: (CountdownTheme) -> Unit = {}
 ) {
     val view = LocalView.current
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showToast by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf("") }
     
@@ -377,22 +385,29 @@ fun CountdownScreen(
         }
     }
     
+    // 获取当前主题属性
+    val themeProperties = LocalThemeProperties.current
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = if (!isDarkMode && useGradient) {
-                    // 使用渐变背景
-                    val currentGradient = gradientBackgrounds[colorIndex]
-                    Brush.verticalGradient(colors = currentGradient.colors)
-                } else {
-                    // 使用单色背景或暗色模式
-                    val color = if (isDarkMode) {
-                        Color(0xFF212121) // 暗黑模式保持原来的颜色
+                brush = if (currentTheme == CountdownTheme.Default) {
+                    // 默认主题逻辑：保留原有的动态背景切换
+                    if (useGradient) {
+                        // 使用渐变背景
+                        val currentGradient = gradientBackgrounds[colorIndex]
+                        Brush.verticalGradient(colors = currentGradient.colors)
                     } else {
-                        solidBackgroundColors[colorIndex]
+                        // 使用单色背景
+                        val color = solidBackgroundColors[colorIndex]
+                        Brush.verticalGradient(colors = listOf(color, color))
                     }
-                    Brush.verticalGradient(colors = listOf(color, color))
+                } else {
+                    // 自定义主题逻辑：使用主题定义的背景
+                    themeProperties.backgroundBrush ?: Brush.verticalGradient(
+                        colors = listOf(themeProperties.backgroundColor, themeProperties.backgroundColor)
+                    )
                 },
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
             )
@@ -442,7 +457,7 @@ fun CountdownScreen(
         ) {
             // 添加按钮旋转动画
             val buttonRotation by animateFloatAsState(
-                targetValue = if (isToolMenuExpanded) 225f else 0f,  // 增加旋转角度到225度
+                targetValue = if (isToolMenuExpanded) 180f else 0f,  // 增加旋转角度到180度
                 animationSpec = tween(
                     durationMillis = 400, 
                     easing = FastOutSlowInEasing
@@ -492,7 +507,7 @@ fun CountdownScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Settings,
+                        imageVector = Icons.Filled.Menu,
                         contentDescription = "设置",
                         tint = if (isDarkMode) Color.White else Color.Black.copy(alpha = 0.7f)
                     )
@@ -501,28 +516,60 @@ fun CountdownScreen(
         }
         
         // 工具菜单展开动画
-        com.example.time.ui.screens.AnimatedToolMenu(
-            isExpanded = isToolMenuExpanded,
-            isVibrationEnabled = isVibrationEnabled,
-            onVibrationToggle = onVibrationToggle,
-            isKeepScreenOn = isKeepScreenOn,
-            onKeepScreenOnToggle = onKeepScreenOnToggle,
-            isDarkMode = isDarkMode,
-            onDarkModeToggle = onDarkModeToggle,
-            isStyleFixed = isStyleFixed,
-            onStyleFixedToggle = onStyleFixedToggle,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 16.dp)
-                .zIndex(1f)
-        )
+    com.example.time.ui.screens.AnimatedToolMenu(
+        isExpanded = isToolMenuExpanded,
+        isVibrationEnabled = isVibrationEnabled,
+        onVibrationToggle = onVibrationToggle,
+        isKeepScreenOn = isKeepScreenOn,
+        onKeepScreenOnToggle = onKeepScreenOnToggle,
+        isDarkMode = isDarkMode,
+        onDarkModeToggle = onDarkModeToggle,
+        isStyleFixed = isStyleFixed,
+        onStyleFixedToggle = onStyleFixedToggle,
+        currentThemeName = currentTheme.displayName,
+        onThemeClick = { showThemeDialog = true },
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(top = 64.dp, end = 16.dp)
+            .zIndex(1f)
+    )
 
-        // 根据倒计时状态显示不同内容
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentTheme = currentTheme,
+            onThemeSelected = { theme ->
+                onThemeChange(theme)
+                showThemeDialog = false
+            },
+            onDismiss = { showThemeDialog = false }
+        )
+    }
+
+    // 根据倒计时状态显示不同内容
         if (!isCountdownFinished) {
+            // 确定当前使用的卡片背景
+            val currentCardBackground = if (currentTheme == CountdownTheme.Default) {
+                cardBackgrounds[cardBackgroundIndex]
+            } else {
+                CardBackground(
+                    name = currentTheme.displayName,
+                    color = themeProperties.cardBackgroundColor,
+                    hasTexture = themeProperties.hasTexture,
+                    contentColor = themeProperties.cardContentColor
+                )
+            }
+
             // 原有的倒计时显示内容
             CompositionLocalProvider(
-                LocalCardBackground provides cardBackgrounds[cardBackgroundIndex]
+                LocalCardBackground provides currentCardBackground
             ) {
+                // 添加文字颜色动画
+                val animatedTextColor by animateColorAsState(
+                    targetValue = themeProperties.textColor,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "textColor"
+                )
+
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
@@ -547,7 +594,7 @@ fun CountdownScreen(
                         // 分隔符
                         Text(
                             text = ":",
-                            color = if (isDarkMode) Color.White else Color.Black,
+                            color = animatedTextColor,
                             fontSize = if (hasHours) 60.sp else 80.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp)
@@ -566,7 +613,7 @@ fun CountdownScreen(
                     // 分隔符
                     Text(
                         text = ":",
-                        color = if (isDarkMode) Color.White else Color.Black,
+                        color = animatedTextColor,
                         fontSize = if (hasHours) 60.sp else 80.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp)
@@ -667,6 +714,18 @@ private fun FlipDigit(
     val cardBackground = LocalCardBackground.current
     val cardBackgroundColor = cardBackground.color
     val hasTexture = cardBackground.hasTexture
+    val contentColor = cardBackground.contentColor
+
+    // 添加颜色平滑过渡动画
+    val animatedCardBackgroundColor by animateColorAsState(
+        targetValue = cardBackgroundColor,
+        animationSpec = tween(durationMillis = 300)
+    )
+    
+    val animatedContentColor by animateColorAsState(
+        targetValue = contentColor,
+        animationSpec = tween(durationMillis = 300)
+    )
 
     // 优化翻转检测逻辑 - 添加首次渲染时的动画效果
     val initialRender = remember { mutableStateOf(true) }
@@ -708,7 +767,7 @@ private fun FlipDigit(
                 .align(Alignment.TopCenter)
                 .shadow(4.dp, RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp))
                 .clip(RoundedCornerShape(8.dp, 8.dp, 0.dp, 0.dp)),
-            color = cardBackgroundColor // 使用当前选中的背景色
+            color = animatedCardBackgroundColor // 使用动画过渡的背景色
         ) {
             Box(contentAlignment = Alignment.Center) {
                 // 添加纹理(如果有)
@@ -721,7 +780,7 @@ private fun FlipDigit(
                     Text(
                         text = prevDigit.toString(),
                         fontSize = digitSize,
-                        color = Color.Black,
+                        color = animatedContentColor,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = cardHeight / 4)
@@ -730,7 +789,7 @@ private fun FlipDigit(
                     Text(
                         text = digit.toString(),
                         fontSize = digitSize,
-                        color = Color.Black,
+                        color = animatedContentColor,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = cardHeight / 4)
@@ -747,7 +806,7 @@ private fun FlipDigit(
                 .align(Alignment.BottomCenter)
                 .shadow(4.dp, RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp))
                 .clip(RoundedCornerShape(0.dp, 0.dp, 8.dp, 8.dp)),
-            color = cardBackgroundColor // 使用当前选中的背景色
+            color = animatedCardBackgroundColor // 使用动画过渡的背景色
         ) {
             Box(contentAlignment = Alignment.Center) {
                 // 添加纹理(如果有)
@@ -760,7 +819,7 @@ private fun FlipDigit(
                     Text(
                         text = prevDigit.toString(),
                         fontSize = digitSize,
-                        color = Color.Black,
+                        color = animatedContentColor, // 修复：使用 animatedContentColor
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = -cardHeight / 4)
@@ -769,7 +828,7 @@ private fun FlipDigit(
                     Text(
                         text = digit.toString(),
                         fontSize = digitSize,
-                        color = Color.Black,
+                        color = animatedContentColor, // 修复：使用 animatedContentColor
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.offset(y = -cardHeight / 4)
@@ -804,7 +863,7 @@ private fun FlipDigit(
                             rotationX = -topFlipProgress * 90 // 0 -> -90
                             transformOrigin = TransformOrigin(0.5f, 1f)
                         },
-                    color = cardBackgroundColor // 使用当前选中的背景色
+                    color = animatedCardBackgroundColor // 使用动画过渡的背景色
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // 添加纹理(如果有)
@@ -815,7 +874,7 @@ private fun FlipDigit(
                         Text(
                             text = prevDigit.toString(), 
                             fontSize = digitSize,
-                            color = Color.Black,
+                            color = animatedContentColor, // 修复：使用 animatedContentColor
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.offset(y = cardHeight / 4)
@@ -836,7 +895,7 @@ private fun FlipDigit(
                             rotationX = (1 - bottomFlipProgress) * 90 // 90 -> 0
                             transformOrigin = TransformOrigin(0.5f, 0f)
                         },
-                    color = cardBackgroundColor // 使用当前选中的背景色
+                    color = animatedCardBackgroundColor // 使用动画过渡的背景色
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // 添加纹理(如果有)
@@ -847,7 +906,7 @@ private fun FlipDigit(
                         Text(
                             text = digit.toString(),
                             fontSize = digitSize,
-                            color = Color.Black,
+                            color = animatedContentColor, // 修复：使用 animatedContentColor
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.offset(y = -cardHeight / 4)

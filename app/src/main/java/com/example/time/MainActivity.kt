@@ -22,6 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import com.example.time.ui.screens.CountdownScreen
 import com.example.time.ui.screens.TimePickerScreen
 import com.example.time.ui.theme.TimeTheme
+import com.example.time.ui.theme.CountdownTheme
+import com.example.time.ui.theme.ThemeDefinitions
+import com.example.time.ui.theme.LocalThemeProperties
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -38,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.os.Handler
 import android.os.Looper
+import androidx.lifecycle.lifecycleScope
 
 class MainActivity : ComponentActivity() {
     private lateinit var vibrator: Vibrator
@@ -94,8 +98,7 @@ class MainActivity : ComponentActivity() {
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         
         // 优化3: 避免在主线程进行不必要的初始化工作
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.Default) {
+        lifecycleScope.launch(Dispatchers.Default) {
             // 预热一些可能的计算
             // 注意：这里不做实际操作，仅为示例
         }
@@ -115,6 +118,24 @@ class MainActivity : ComponentActivity() {
                     var isKeepScreenOn by remember { mutableStateOf(false) }
                     var isDarkMode by remember { mutableStateOf(false) }
                     var isStyleFixed by remember { mutableStateOf(false) }
+
+                    // 主题状态管理：读取保存的主题
+                    val savedThemeName = remember { 
+                        sharedPreferences.getString("current_theme", CountdownTheme.Default.name) 
+                    }
+                    // 当前选中的主题状态
+                    var currentTheme by remember { 
+                        mutableStateOf(
+                            try {
+                                CountdownTheme.valueOf(savedThemeName ?: CountdownTheme.Default.name)
+                            } catch (e: Exception) {
+                                CountdownTheme.Default
+                            }
+                        ) 
+                    }
+                    
+                    // 根据当前主题和暗黑模式状态获取主题属性
+                    val currentThemeProperties = ThemeDefinitions.getTheme(currentTheme, isDarkMode)
                     
                     // 创建铃声播放器
                     val ringtonePlayer = rememberRingtonePlayer()
@@ -155,70 +176,82 @@ class MainActivity : ComponentActivity() {
                     ) { started ->
                         // 优化9: 使用Box包装确保只有一个composable在屏幕上
                         Box(modifier = Modifier.fillMaxSize()) {
-                            if (!started) {
-                                TimePickerScreen(
-                                    onStartClick = { seconds ->
-                                        totalSeconds = seconds
-                                        isCountdownStarted = true
-                                    },
-                                    isVibrationEnabled = isVibrationEnabled,
-                                    onVibrationToggle = { enabled ->
-                                        isVibrationEnabled = enabled
-                                    },
-                                    isKeepScreenOn = isKeepScreenOn,
-                                    onKeepScreenOnToggle = { enabled ->
-                                        isKeepScreenOn = enabled
-                                    },
-                                    isDarkMode = isDarkMode,
-                                    onDarkModeToggle = { enabled ->
-                                        isDarkMode = enabled
-                                    }
-                                )
-                            } else {
-                                CountdownScreen(
-                                    totalSeconds = totalSeconds,
-                                    onFinish = {
-                                        // 倒计时结束后的逻辑
-                                    },
-                                    onBack = {
-                                        isCountdownStarted = false
-                                        // 返回时停止服务
-                                        stopCountdownService()
-                                    },
-                                    isVibrationEnabled = isVibrationEnabled,
-                                    onVibrationToggle = { enabled ->
-                                        isVibrationEnabled = enabled
-                                        // 更新服务中的振动设置
-                                        val intent = Intent(this@MainActivity, CountdownService::class.java).apply {
-                                            action = CountdownService.ACTION_UPDATE_SETTINGS
-                                            putExtra(CountdownService.EXTRA_VIBRATION_ENABLED, enabled)
+                            // 提供主题属性
+                            CompositionLocalProvider(
+                                LocalThemeProperties provides currentThemeProperties
+                            ) {
+                                if (!started) {
+                                    TimePickerScreen(
+                                        onStartClick = { seconds ->
+                                            totalSeconds = seconds
+                                            isCountdownStarted = true
+                                        },
+                                        isVibrationEnabled = isVibrationEnabled,
+                                        onVibrationToggle = { enabled ->
+                                            isVibrationEnabled = enabled
+                                        },
+                                        isKeepScreenOn = isKeepScreenOn,
+                                        onKeepScreenOnToggle = { enabled ->
+                                            isKeepScreenOn = enabled
+                                        },
+                                        isDarkMode = isDarkMode,
+                                        onDarkModeToggle = { enabled ->
+                                            isDarkMode = enabled
                                         }
-                                        startService(intent)
-                                    },
-                                    vibrator = vibrator,
-                                    isKeepScreenOn = isKeepScreenOn,
-                                    onKeepScreenOnToggle = { enabled ->
-                                        isKeepScreenOn = enabled
-                                    },
-                                    isDarkMode = isDarkMode,
-                                    onDarkModeToggle = { enabled ->
-                                        isDarkMode = enabled
-                                    },
-                                    isAlarmSoundEnabled = isAlarmSoundEnabled,
-                                    ringtonePlayer = ringtonePlayer,
-                                    isStyleFixed = isStyleFixed,
-                                    onStyleFixedToggle = { enabled ->
-                                        isStyleFixed = enabled
-                                    },
-                                    startCountdownService = { seconds, vibrationEnabled, alarmEnabled ->
-                                        startCountdownService(seconds, vibrationEnabled, alarmEnabled)
-                                    },
-                                    stopCountdownService = {
-                                        stopCountdownService()
-                                    },
-                                    serviceRemainingSeconds = if (isBound) countdownService?.remainingSeconds?.collectAsState()?.value else null,
-                                    serviceCountdownFinished = if (isBound) countdownService?.isCountdownFinished?.collectAsState()?.value == true else false
-                                )
+                                    )
+                                } else {
+                                    CountdownScreen(
+                                        totalSeconds = totalSeconds,
+                                        onFinish = {
+                                            // 倒计时结束后的逻辑
+                                        },
+                                        onBack = {
+                                            isCountdownStarted = false
+                                            // 返回时停止服务
+                                            stopCountdownService()
+                                        },
+                                        isVibrationEnabled = isVibrationEnabled,
+                                        onVibrationToggle = { enabled ->
+                                            isVibrationEnabled = enabled
+                                            // 更新服务中的振动设置
+                                            val intent = Intent(this@MainActivity, CountdownService::class.java).apply {
+                                                action = CountdownService.ACTION_UPDATE_SETTINGS
+                                                putExtra(CountdownService.EXTRA_VIBRATION_ENABLED, enabled)
+                                            }
+                                            startService(intent)
+                                        },
+                                        vibrator = vibrator,
+                                        isKeepScreenOn = isKeepScreenOn,
+                                        onKeepScreenOnToggle = { enabled ->
+                                            isKeepScreenOn = enabled
+                                        },
+                                        isDarkMode = isDarkMode,
+                                        onDarkModeToggle = { enabled ->
+                                            val newTheme = if (enabled) CountdownTheme.Dark else CountdownTheme.Default
+                                            currentTheme = newTheme
+                                            updateTheme(newTheme)
+                                        },
+                                        isAlarmSoundEnabled = isAlarmSoundEnabled,
+                                        ringtonePlayer = ringtonePlayer,
+                                        isStyleFixed = isStyleFixed,
+                                        onStyleFixedToggle = { enabled ->
+                                            isStyleFixed = enabled
+                                        },
+                                        startCountdownService = { seconds, vibrationEnabled, alarmEnabled ->
+                                            startCountdownService(seconds, vibrationEnabled, alarmEnabled)
+                                        },
+                                        stopCountdownService = {
+                                            stopCountdownService()
+                                        },
+                                        serviceRemainingSeconds = if (isBound) countdownService?.remainingSeconds?.collectAsState()?.value else null,
+                                        serviceCountdownFinished = if (isBound) countdownService?.isCountdownFinished?.collectAsState()?.value == true else false,
+                                        currentTheme = currentTheme,
+                                        onThemeChange = { newTheme ->
+                                            currentTheme = newTheme
+                                            updateTheme(newTheme)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -281,5 +314,13 @@ class MainActivity : ComponentActivity() {
             action = CountdownService.ACTION_STOP_COUNTDOWN
         }
         startService(intent)
+    }
+
+    // 更新并保存主题设置
+    private fun updateTheme(theme: CountdownTheme) {
+        getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("current_theme", theme.name)
+            .apply()
     }
 }
